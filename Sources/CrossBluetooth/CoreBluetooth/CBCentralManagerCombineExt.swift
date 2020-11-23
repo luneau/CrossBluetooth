@@ -12,9 +12,9 @@ import Combine
 
 public struct ScannedDevice {
     
-    let peripheral: CBPeripheral
-    let advertisementData: [String : Any]
-    let rssi: Int
+    public let peripheral: CBPeripheral
+    public let advertisementData: [String : Any]
+    public let rssi: Int
 }
 
 // MARK: - state publisher
