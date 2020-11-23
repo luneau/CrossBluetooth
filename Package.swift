@@ -25,8 +25,10 @@ let package = Package(
             name: "CrossBluetooth",
             dependencies: [],
             path: ".",
-            sources: [
-                                "Sources"
+            sources: [ "Sources/CrossBluetooth",
+                       "Sources/CrossBluetooth/BluetoothCombine",
+                       "Sources/CrossBluetooth/CoreBluetooth",
+                       "Sources/CrossBluetooth/CoreBluetooth/DelegateWrappers"
                             ]),
         .testTarget(
             name: "CrossBluetoothTests",
