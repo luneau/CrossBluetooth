@@ -49,7 +49,7 @@ extension CBCharacteristic {
 // MARK: - CENTRAL : ask for notfication publisher
 
 extension CBCharacteristic {
-    func setNotificationPublisher(value : Bool = true) -> AnyPublisher<CBCharacteristic, BluetoothError> {
+    public func setNotificationPublisher(value : Bool = true) -> AnyPublisher<CBCharacteristic, BluetoothError> {
         return BTSetNotificationPublisher( withCharacteristic:  self, setValue : value ).eraseToAnyPublisher()
     }
 }

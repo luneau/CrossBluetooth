@@ -28,7 +28,7 @@ extension CBPeripheralManager {
 // MARK: - Peripheral : Write Characteristic publisher
 
 extension CBPeripheralManager {
-    func writeRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<(CBPeripheralManager,CBATTRequest), BluetoothError>  {
+    public func writeRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<(CBPeripheralManager,CBATTRequest), BluetoothError>  {
         return BTWriteRequestPublisher( peripheralManager: self, characteristic: characteristic).eraseToAnyPublisher()
     }
 }
