@@ -86,7 +86,7 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
     private var cursorData = 0
     private lazy var maximumTransmissionUnit : Int = {
         //20
-       characteristic.service.peripheral.maximumWriteValueLength(for: .withoutResponse)
+        characteristic.service.peripheral.maximumWriteValueLength(for: .withoutResponse)
     }()
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic , payload : Data) {
@@ -115,10 +115,8 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
             } receiveValue: { [weak self]  isReady in
                 guard let self = self else { return }
                 let dataSent = self.flushDataToSend()
-               // let _ = self.subscriber?.receive((self.characteristic,dataSent))
                 if dataSent >= self.payload.count {
                     let _ = self.subscriber?.receive(completion: .finished)
-                    //let _ = self.subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
                 }
             }
     }
@@ -166,9 +164,93 @@ struct BTWriteWithoutResponsePublisher: Publisher {
         subscriber.receive(subscription: subscription)
     }
 }
+// MARK: -  CENTRAL : WriteWithResponse publisher
 
+final class BTWriteResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
+    
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
+    private var subscriber: AnySubscriber<(CBCharacteristic,Int), BluetoothError>? = nil
+    private let characteristic: CBCharacteristic
+    private let payload : Data
+    private var didWriteCancelable : AnyCancellable? = nil
+    private var cursorData = 0
+    private lazy var maximumTransmissionUnit : Int = {
+        //20
+        characteristic.service.peripheral.maximumWriteValueLength(for: .withoutResponse)
+    }()
+    
+    init(subscriber: SubscriberType, characteristic : CBCharacteristic , payload : Data) {
+        self.subscriber = AnySubscriber(subscriber)
+        self.characteristic = characteristic
+        self.payload = payload
+        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+            let delegate = PeripheralDelegateWrapper()
+            characteristic.service.peripheral.delegate = delegate
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        guard demand != .none else {
+            return
+        }
+        
+        guard didWriteCancelable == nil else { return } // should not happen but in case of mis-used
+        
+        
+        didWriteCancelable = characteristic.service.peripheral.didWritePublisher(forAttribute: characteristic)
+            .sink { [weak self] complet in
+                self?.subscriber?.receive(completion: complet)
+            } receiveValue: { [weak self]  _ in
+                guard let self = self else { return }
+                let dataSent = self.flushDataToSend()
+                if dataSent >= self.payload.count {
+                    let _ = self.subscriber?.receive(completion: .finished)
+                }
+            }
+    }
+    
+    private func  flushDataToSend() -> Int {
+        let peripheral = characteristic.service.peripheral
+        if cursorData < payload.count {
+            let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
+            let range = cursorData..<(cursorData + chunkSize)
+            peripheral.writeValue(payload.subdata(in: range), for: characteristic, type: CBCharacteristicWriteType.withResponse)
+            let _ = subscriber?.receive((characteristic,cursorData + range.count))
+            cursorData += chunkSize
+        }
+        return cursorData
+    }
+    
+    func cancel() {
+        didWriteCancelable?.cancel()
+        didWriteCancelable = nil
+        peripheralDelegateWrapper = nil
+        subscriber = nil
+    }
+    
+}
+struct BTWriteResponsePublisher: Publisher {
+    
+    typealias Output = (CBCharacteristic,Int)
+    typealias Failure = BluetoothError
+    
+    private let characteristic: CBCharacteristic
+    private let payload : Data
+    
+    init(withCharacteristic characteristic: CBCharacteristic , payload : Data) {
+        self.characteristic = characteristic
+        self.payload = payload
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTWriteResponseSubscription(subscriber: subscriber , characteristic: characteristic, payload : payload)
+        subscriber.receive(subscription: subscription)
+    }
+}
 
-// MARK: - CENTRAL : UpdateValue publisher
+// MARK: - CENTRAL : DidUpdateValue publisher
 
 final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBAttribute,Data), SubscriberType.Failure == BluetoothError  {
     
@@ -195,7 +277,7 @@ final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscripti
         let _ = subscriber.receive((characteristic,Data()))
         
     }
-  
+    
     
     func cancel() {
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = nil
@@ -227,11 +309,11 @@ struct BTDidUpdateValuePublisher: Publisher {
 final class BTSetNotificationSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBCharacteristic, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
-
+    
     private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     private let setValue : Bool
-
+    
     init(subscriber: SubscriberType, characteristic : CBCharacteristic, setValue : Bool) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
@@ -255,7 +337,7 @@ final class BTSetNotificationSubscription<SubscriberType: Subscriber>: Subscript
         peripheralDelegateWrapper?.notifySubscribers[characteristic] = subscriber
         characteristic.service.peripheral.setNotifyValue(setValue, for: characteristic)
     }
-   
+    
     func cancel() {
         peripheralDelegateWrapper?.notifySubscribers.removeValue(forKey: characteristic)
         peripheralDelegateWrapper = nil
@@ -311,7 +393,7 @@ final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription wh
         characteristic.service.peripheral.readValue(for: characteristic)
         
     }
-  
+    
     
     func cancel() {
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = nil

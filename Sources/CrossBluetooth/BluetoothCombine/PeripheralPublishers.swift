@@ -17,7 +17,7 @@ final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscripti
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBPeripheral,Int), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>? = nil
     private let peripheral: CBPeripheral
     
     init(subscriber: SubscriberType, peripheral : CBPeripheral ) {
@@ -148,7 +148,7 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
     typealias Input = (CBPeripheral , CBPeripheralState)
     typealias Failure = BluetoothError
     
-    public var subscriber: AnySubscriber<(CBPeripheral , CBPeripheralState),BluetoothError>?
+    public var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>?
     private let centralManager: CBCentralManager
     private let peripheral: CBPeripheral
     private let options: [String: Any]?
@@ -220,7 +220,7 @@ struct BTPeripheralConnectionStatePublisher: Publisher {
 // MARK: - ready to write without response publisher
 final class BTPeripheralReadyToWriteSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Bool, SubscriberType.Failure == BluetoothError {
     
-    public var subscriber: AnySubscriber<Bool,BluetoothError>?
+    public var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>?
     private let peripheral: CBPeripheral
     private let attribute : CBAttribute
     
@@ -280,6 +280,67 @@ struct BTPeripheralReadyToWritePublisher: Publisher {
     }
 }
 
+// MARK: - did write with response publisher
+final class BTPeripheralDidWriteSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBAttribute, SubscriberType.Failure == BluetoothError {
+    
+    public var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>?
+    private let peripheral: CBPeripheral
+    private let attribute : CBAttribute
+    
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
+    init(subscriber:  SubscriberType,  peripheral : CBPeripheral , attribute : CBAttribute) {
+        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
+                                                                                      , receiveValue: {subscriber.receive($0)}
+                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.peripheral = peripheral
+        self.attribute = attribute
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
+            let delegate = PeripheralDelegateWrapper()
+            peripheral.delegate = delegate
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        guard demand != .none else { return }
+        guard let subscriber = self.subscriber else {return}
+       
+        guard peripheralDelegateWrapper?.didWriteSubscribers[attribute]  == nil else {
+            subscriber.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
+            return
+        }
+        peripheralDelegateWrapper?.didWriteSubscribers[attribute] = subscriber
+        
+    }
+    
+    func cancel() {
+        peripheralDelegateWrapper?.didWriteSubscribers.removeValue(forKey: attribute)
+        peripheralDelegateWrapper = nil
+        subscriber = nil
+    }
+    
+}
+
+struct BTPeripheralDidWritePublisher: Publisher {
+    
+    typealias Output = CBAttribute
+    typealias Failure = BluetoothError
+    
+    private let peripheral: CBPeripheral
+    private let attribute : CBAttribute
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
+    init(_ peripheral : CBPeripheral, attribute : CBAttribute) {
+        self.peripheral = peripheral
+        self.attribute = attribute
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTPeripheralDidWriteSubscription(subscriber: subscriber, peripheral: peripheral, attribute: attribute)
+        subscriber.receive(subscription: subscription)
+    }
+}
 // MARK: - open L2CAP publisher
 final class BTOpenL2CAPSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBL2CAPChannel, SubscriberType.Failure == BluetoothError  {
 

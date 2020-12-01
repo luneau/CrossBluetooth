@@ -25,11 +25,17 @@ let package = Package(
             name: "CrossBluetooth",
             dependencies: [],
             path: ".",
+            exclude: [
+                "Tests",
+                "LICENSE",
+                "CrossBluetooth.podspec",
+                "README.md"
+            ],
             sources: [ "Sources/CrossBluetooth",
                        "Sources/CrossBluetooth/BluetoothCombine",
                        "Sources/CrossBluetooth/CoreBluetooth",
                        "Sources/CrossBluetooth/CoreBluetooth/DelegateWrappers"
-                            ]),
+            ]),
         .testTarget(
             name: "CrossBluetoothTests",
             dependencies: ["CrossBluetooth"]),

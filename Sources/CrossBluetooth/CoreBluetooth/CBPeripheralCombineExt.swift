@@ -58,3 +58,11 @@ extension CBPeripheral {
     }
     
 }
+
+extension CBPeripheral {
+    public func didWritePublisher(forAttribute attribute : CBAttribute) -> AnyPublisher<CBAttribute,BluetoothError> {
+        return BTPeripheralDidWritePublisher (self, attribute : attribute).eraseToAnyPublisher()
+    }
+    
+}
+

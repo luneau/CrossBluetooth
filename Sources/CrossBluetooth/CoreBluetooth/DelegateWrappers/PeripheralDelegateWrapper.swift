@@ -19,6 +19,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     public var characteristicSubscribers = [CBService :AnySubscriber<(CBService,[CBCharacteristic]), BluetoothError>]()
     public var descriptorSubscribers = [CBCharacteristic :AnySubscriber<(CBCharacteristic,[CBDescriptor]), BluetoothError>]()
     public var valuesSubscribers = [CBAttribute : AnySubscriber<(CBAttribute,Data), BluetoothError>]()
+    public var didWriteSubscribers = [CBAttribute : AnySubscriber<CBAttribute, BluetoothError>]()
     public var notifySubscribers = [CBCharacteristic :AnySubscriber<CBCharacteristic, BluetoothError>]()
     public var peripheralReadySubscribers  = [CBAttribute : AnySubscriber<Bool, BluetoothError>]()
     public var peripheralDidOpenL2CAPSubscribers  = [CBL2CAPPSM : AnySubscriber<CBL2CAPChannel, BluetoothError>]()
@@ -31,8 +32,10 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
         let _ = characteristicSubscribers.map{ $0.value.receive(completion: .finished)}
         let _ = descriptorSubscribers.map{ $0.value.receive(completion: .finished)}
         let _ = valuesSubscribers.map{ $0.value.receive(completion: .finished)}
-        let _ = peripheralReadySubscribers.map{ $0.value.receive(completion: .finished)}
+        let _ = didWriteSubscribers.map{ $0.value.receive(completion: .finished)}
         let _ = notifySubscribers.map{ $0.value.receive(completion: .finished)}
+        let _ = peripheralReadySubscribers.map{ $0.value.receive(completion: .finished)}
+        let _ = peripheralDidOpenL2CAPSubscribers.map{ $0.value.receive(completion: .finished)}
     }
     /**
      *  @method peripheralDidUpdateName:
@@ -179,11 +182,13 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      *  @discussion                This method returns the result of a {@link writeValue:forCharacteristic:type:} call, when the <code>CBCharacteristicWriteWithResponse</code> type is used.
      */
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        guard let valueSubscriber = valuesSubscribers[characteristic] else { return }
+        guard let didWriteSubscriber = didWriteSubscribers[characteristic] else { return }
         guard error == nil else {
-            let _ = valueSubscriber.receive(completion: .failure(BluetoothError.characteristicWriteFailed(characteristic, error)))
+            let _ = didWriteSubscriber.receive(completion: .failure(BluetoothError.characteristicWriteFailed(characteristic, error)))
             return
         }
+        
+        let _ = didWriteSubscriber.receive(characteristic)
     }
 
     
@@ -243,6 +248,8 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = valueSubscriber.receive(completion: .failure(BluetoothError.descriptorReadFailed(descriptor, error)))
             return
         }
+        //let _ = valueSubscriber.receive((descriptor,descriptor.value ?? Data()))
+        print ("didUpdateValueFor descriptor: missing handling data")
     }
 
     
@@ -257,11 +264,13 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      */
     
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor descriptor: CBDescriptor, error: Error?) {
-        guard let valueSubscriber = valuesSubscribers[descriptor] else { return }
+       /* guard let valueSubscriber = valuesSubscribers[descriptor] else { return }
         guard error == nil else {
             let _ = valueSubscriber.receive(completion: .failure(BluetoothError.descriptorWriteFailed(descriptor, error)))
             return
-        }
+        }*/
+        // need work
+        print ("didWriteValueFor descriptor: missing handling data")
     }
 
     
