@@ -32,7 +32,6 @@ final class BTCentralManagerStateSubscription<SubscriberType: Subscriber>: Subsc
         guard centralDelegateWrapper?.stateSubscriber != nil else {
             // only one subscription per  manager
             let _ = subscriber?.receive(centralManager.state)
-            let _ = subscriber?.receive(completion: .finished)
             return
         }
         centralDelegateWrapper?.stateSubscriber = subscriber

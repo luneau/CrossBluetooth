@@ -23,7 +23,7 @@ extension CBCentralManager {
     public class func statePublisher(centralManager: CBCentralManager = CBCentralManager()) -> AnyPublisher<CBManagerState,Never> {
         return BTCentralManagerStatePublisher(centralManager: centralManager).eraseToAnyPublisher()
     }
-    func statePublisher() -> AnyPublisher<CBManagerState, Never> {
+    public func statePublisher() -> AnyPublisher<CBManagerState, Never> {
             self.publisher(for: \.state).eraseToAnyPublisher()
     }
     
@@ -35,5 +35,10 @@ extension CBCentralManager {
     public class func scanPublisher(withServices serviceUUIDs: [CBUUID]? = nil,
                              options: [String: Any]? = nil, centralManager : CBCentralManager = CBCentralManager()) -> AnyPublisher<(CBCentralManager,ScannedDevice),BluetoothError> {
         return BTCentralManagerScanPublisher (centralManager: centralManager, withServices : serviceUUIDs, options : options).eraseToAnyPublisher()
+    }
+    
+    public func scanPublisher(withServices serviceUUIDs: [CBUUID]? = nil,
+                             options: [String: Any]? = nil) -> AnyPublisher<(CBCentralManager,ScannedDevice),BluetoothError> {
+        return BTCentralManagerScanPublisher (centralManager: self, withServices : serviceUUIDs, options : options).eraseToAnyPublisher()
     }
 }
