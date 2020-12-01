@@ -12,8 +12,6 @@ import os.log
 
 final class CentralManagerDelegateWrapper: NSObject, CBCentralManagerDelegate {
     
-    public var serviceUUIDs: [CBUUID]? = nil
-    public var options: [String: Any]? = nil
     public var stateSubscriber : AnySubscriber<CBManagerState, Never>? = nil
     public var scanSubscriber: AnySubscriber<(CBCentralManager, ScannedDevice), BluetoothError>? = nil
     public var connectionSuscribers = [CBPeripheral : AnySubscriber< (CBPeripheral , CBPeripheralState), BluetoothError>]()
@@ -25,15 +23,6 @@ final class CentralManagerDelegateWrapper: NSObject, CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         
         let _ = stateSubscriber?.receive(central.state)
-        guard scanSubscriber != nil else {
-            return
-        }
-        guard central.state != .poweredOn else {
-            if !central.isScanning {
-                central.scanForPeripherals(withServices:serviceUUIDs, options: options)
-            }
-            return
-        }
     }
     
     func centralManager(_ central: CBCentralManager,
