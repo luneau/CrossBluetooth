@@ -75,8 +75,8 @@ final class BTCentralManagerScanSubscription<SubscriberType: Subscriber>: Subscr
     private let options: [String: Any]?
     private var centralDelegateWrapper : CentralManagerDelegateWrapper?
     
-    init(subscriber: SubscriberType, centralManager: CBCentralManager , withServices serviceUUIDs: [CBUUID]? = nil,
-         options: [String: Any]? = nil) {
+    init(subscriber: SubscriberType, centralManager: CBCentralManager , withServices serviceUUIDs: [CBUUID]? ,
+         options: [String: Any]? ) {
         self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
         }, receiveCompletion: {subscriber.receive(completion: $0)})
         self.centralManager = centralManager
@@ -137,7 +137,7 @@ struct BTCentralManagerScanPublisher : Publisher {
     }
     
     func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
-        let subscription = BTCentralManagerScanSubscription(subscriber: subscriber, centralManager: centralManager)
+        let subscription = BTCentralManagerScanSubscription(subscriber: subscriber, centralManager: centralManager, withServices : serviceUUIDs, options : options)
         subscriber.receive(subscription: subscription)
     }
 }
