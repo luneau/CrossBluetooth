@@ -29,12 +29,13 @@ final class BTCentralManagerStateSubscription<SubscriberType: Subscriber>: Subsc
     }
     
     func request(_ demand: Subscribers.Demand) {
-        guard centralDelegateWrapper?.stateSubscriber != nil else {
+        guard let centralDelegateWrapper = self.centralDelegateWrapper else { return }
+        guard centralDelegateWrapper.stateSubscriber == nil else {
             // only one subscription per  manager
             let _ = subscriber?.receive(centralManager.state)
             return
         }
-        centralDelegateWrapper?.stateSubscriber = subscriber
+        centralDelegateWrapper.stateSubscriber = subscriber
         
         let _ = subscriber?.receive(centralManager.state)
     }
