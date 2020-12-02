@@ -30,7 +30,13 @@ extension CBCharacteristic {
         return BTWriteWithoutResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
+// MARK: -  CENTRAL : WriteWithResponse publisher
 
+extension CBCharacteristic {
+    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<(CBCharacteristic,Int), BluetoothError> {
+        return BTWriteWithResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
+    }
+}
 // MARK: - CENTRAL : UpdateValue publisher
 
 extension CBCharacteristic {

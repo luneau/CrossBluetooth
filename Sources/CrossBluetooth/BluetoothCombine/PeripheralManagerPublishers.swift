@@ -32,7 +32,7 @@ final class BTReadRequestSubscription<SubscriberType: Subscriber>: Subscription 
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.readRequestSubscribers[characteristic] == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
@@ -87,7 +87,7 @@ final class BTPWriteRequestSubscription<SubscriberType: Subscriber>: Subscriptio
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.writeRequestSubscribers[characteristic] == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
@@ -122,18 +122,26 @@ struct BTWriteRequestPublisher : Publisher {
 }
 // MARK: - Peripheral : Update Characteristic publisher
 
-final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheralManager,CBATTRequest), SubscriberType.Failure == BluetoothError  {
+final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBMutableCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
     
     public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
     private let peripheralManager: CBPeripheralManager
-    private let characteristic: CBCharacteristic
+    private let central : CBCentral
+    private let characteristic: CBMutableCharacteristic
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     private let data : Data
+    private var isReadyToUpdateCancelable : AnyCancellable? = nil
+    private var cursorData = 0
+    private lazy var maximumTransmissionUnit : Int = {
+        //20
+        central.maximumUpdateValueLength
+    }()
     
-    init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , characteristic: CBCharacteristic, value : Data) {
+    init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , central : CBCentral, characteristic: CBMutableCharacteristic, value : Data) {
         self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
         }, receiveCompletion: {subscriber.receive(completion: $0)})
         self.peripheralManager = peripheralManager
+        self.central = central
         self.characteristic = characteristic
         self.data = value
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -144,40 +152,126 @@ final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.updateValueSubscribers[characteristic] == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
             return
         }
         delegateWrapper.updateValueSubscribers[characteristic] = subscriber
-    }
-    func updateDate() {
+        guard isReadyToUpdateCancelable == nil else { return } // should not happen but in case of mis-used
         
+        
+        isReadyToUpdateCancelable = peripheralManager.isReadyToUpdateValuePublisher(characteristic: characteristic)
+            .filter { $0 }
+            .sink { [weak self]  isReady in
+                guard let self = self else { return }
+                let dataSent = self.flushDataToSend()
+                if dataSent >= self.data.count {
+                    let _ = self.subscriber?.receive(completion: .finished)
+                }
+            }
+    }
+    private func  flushDataToSend() -> Int {
+        while (cursorData < data.count) {
+            let chunkSize = data.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : data.count - cursorData
+            let range = cursorData..<(cursorData + chunkSize)
+            if peripheralManager.updateValue(data.subdata(in: range), for: characteristic, onSubscribedCentrals: [central]) {
+                let _ = subscriber?.receive((characteristic,cursorData + range.count))
+                cursorData += chunkSize
+            } else {
+                return cursorData
+            }
+        }
+        return cursorData
     }
     func cancel() {
         delegateWrapper?.updateValueSubscribers.removeValue(forKey: characteristic)
+        isReadyToUpdateCancelable?.cancel()
+        isReadyToUpdateCancelable = nil
         subscriber = nil
         delegateWrapper = nil
+        cursorData = 0
     }
 }
 struct BTUpdateValuePublisher : Publisher {
     
-    typealias Output = (CBPeripheralManager,CBATTRequest)
+    typealias Output = (CBMutableCharacteristic,Int)
     typealias Failure = BluetoothError
     
     let peripheralManager: CBPeripheralManager
-    let characteristic: CBCharacteristic
+    let central : CBCentral
+    let characteristic: CBMutableCharacteristic
     let data : Data
     
-    init(peripheralManager: CBPeripheralManager , characteristic: CBCharacteristic, value : Data) {
+    init(peripheralManager: CBPeripheralManager ,central : CBCentral, characteristic: CBMutableCharacteristic, value : Data) {
         self.peripheralManager = peripheralManager
+        self.central = central
         self.characteristic = characteristic
         self.data = value
     }
     
     func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
-        let subscription = BTPUpdateValueSubscription(subscriber: subscriber, peripheralManager: peripheralManager, characteristic: characteristic, value: data)
+        let subscription = BTPUpdateValueSubscription(subscriber: subscriber, peripheralManager: peripheralManager,central : central, characteristic: characteristic, value: data)
+        subscriber.receive(subscription: subscription)
+    }
+}
+
+
+// MARK: - Peripheral : is Ready to Update Characteristic publisher
+
+final class BTIsReadyToUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Bool, SubscriberType.Failure == Never  {
+    
+    public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
+    private let peripheralManager: CBPeripheralManager
+    private let characteristic: CBMutableCharacteristic
+    private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
+    
+    init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , characteristic: CBMutableCharacteristic) {
+        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
+        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.peripheralManager = peripheralManager
+       self.characteristic = characteristic
+        self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
+            let delegate = PeripheralManagerDelegateWrapper()
+            peripheralManager.delegate = delegate
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        
+        guard let delegateWrapper = delegateWrapper else { return}
+        guard delegateWrapper.peripheralIsReadyToUpdateSubscribers[characteristic] == nil else {
+            return
+        }
+        delegateWrapper.peripheralIsReadyToUpdateSubscribers[characteristic] = subscriber
+        let _ = subscriber?.receive(true)
+       
+    }
+
+    func cancel() {
+        delegateWrapper?.peripheralIsReadyToUpdateSubscribers.removeValue(forKey: characteristic)
+        subscriber = nil
+        delegateWrapper = nil
+    }
+}
+struct BTIsReadyToUpdateValuePublisher : Publisher {
+    
+    typealias Output = Bool
+    typealias Failure = Never
+    
+    let peripheralManager: CBPeripheralManager
+    private let characteristic: CBMutableCharacteristic
+   
+    
+    init(peripheralManager: CBPeripheralManager,characteristic: CBMutableCharacteristic ) {
+        self.peripheralManager = peripheralManager
+        self.characteristic = characteristic
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTIsReadyToUpdateValueSubscription(subscriber: subscriber, peripheralManager: peripheralManager, characteristic: characteristic)
         subscriber.receive(subscription: subscription)
     }
 }
@@ -203,7 +297,7 @@ final class BTAdvertiseDataSubscription<SubscriberType: Subscriber>: Subscriptio
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.advertisingSubscriber == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
@@ -260,7 +354,7 @@ final class BTAdvertiseServiceSubscription<SubscriberType: Subscriber>: Subscrip
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.addServiceSubscribers[service] == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
@@ -317,7 +411,7 @@ final class BTAdvertiseL2CAPChannelSubscription<SubscriberType: Subscriber>: Sub
     }
     
     func request(_ demand: Subscribers.Demand) {
-      
+        
         guard let delegateWrapper = delegateWrapper else { return}
         guard delegateWrapper.advertisingL2CAPSubscriber == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))

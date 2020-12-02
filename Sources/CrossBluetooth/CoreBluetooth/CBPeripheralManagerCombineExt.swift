@@ -36,11 +36,17 @@ extension CBPeripheralManager {
 // MARK: - Peripheral : Update Characteristic publisher
 
 extension CBPeripheralManager {
-    public func updateValuePublisher( forCharacteristic characteristic : CBCharacteristic ,value : Data) -> AnyPublisher<(CBPeripheralManager,CBATTRequest), BluetoothError>  {
-        return BTUpdateValuePublisher( peripheralManager: self, characteristic: characteristic, value : value ).eraseToAnyPublisher()
+    public func updateValuePublisher( central : CBCentral, characteristic : CBMutableCharacteristic ,value : Data) -> AnyPublisher<(CBMutableCharacteristic,Int), BluetoothError>  {
+        return BTUpdateValuePublisher( peripheralManager: self,central : central ,characteristic: characteristic, value : value ).eraseToAnyPublisher()
     }
 }
+// MARK: - Peripheral : Is Ready to Update Characteristic publisher
 
+extension CBPeripheralManager {
+    public func isReadyToUpdateValuePublisher(characteristic : CBMutableCharacteristic) -> AnyPublisher<Bool, Never>  {
+        return BTIsReadyToUpdateValuePublisher( peripheralManager: self, characteristic: characteristic).eraseToAnyPublisher()
+    }
+}
 // MARK: - Service Advertising publisher
 
 extension CBPeripheralManager {

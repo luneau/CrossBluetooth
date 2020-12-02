@@ -22,8 +22,8 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     public var notifySubscribers =  [CBCharacteristic : AnySubscriber<(CBCentral,PubSubEvent), Never>]()
     public var readRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
     public var writeRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
-    public var updateValueSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
-    public var peripheralReadySubscribers  = [CBAttribute : AnySubscriber<CBPeripheralManager, BluetoothError>]()
+    public var updateValueSubscribers =  [CBCharacteristic : AnySubscriber<(CBMutableCharacteristic,Int), BluetoothError>]()
+    public var peripheralIsReadyToUpdateSubscribers  = [CBAttribute : AnySubscriber<Bool, Never>]()
     public var advertisingL2CAPSubscriber : AnySubscriber<(CBL2CAPPSM,PubSubEvent), BluetoothError>? = nil
     public var didOpenL2CAPSubscribers  = [CBL2CAPPSM : AnySubscriber<(CBL2CAPChannel,PubSubEvent), BluetoothError>]()
     
@@ -193,8 +193,11 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
      *
      */
     func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager){
-        guard let characteristicSubscriber = peripheralReadySubscribers.first?.value else { return }
-        let _ = characteristicSubscriber.receive(peripheral)
+        //guard let characteristicSubscriber = peripheralIsReadyToUpdateSubscribers.first?.value else { return }
+        //let _ = characteristicSubscriber.receive(true)
+        peripheralIsReadyToUpdateSubscribers.values.forEach {
+            let _ = $0.receive(true)
+        }
     }
 
     

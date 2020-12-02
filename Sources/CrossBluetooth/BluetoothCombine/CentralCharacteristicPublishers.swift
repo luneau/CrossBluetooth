@@ -166,7 +166,7 @@ struct BTWriteWithoutResponsePublisher: Publisher {
 }
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
-final class BTWriteResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
+final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -231,7 +231,7 @@ final class BTWriteResponseSubscription<SubscriberType: Subscriber>: Subscriptio
     }
     
 }
-struct BTWriteResponsePublisher: Publisher {
+struct BTWriteWithResponsePublisher: Publisher {
     
     typealias Output = (CBCharacteristic,Int)
     typealias Failure = BluetoothError
@@ -245,7 +245,7 @@ struct BTWriteResponsePublisher: Publisher {
     }
     
     func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
-        let subscription = BTWriteResponseSubscription(subscriber: subscriber , characteristic: characteristic, payload : payload)
+        let subscription = BTWriteWithResponseSubscription(subscriber: subscriber , characteristic: characteristic, payload : payload)
         subscriber.receive(subscription: subscription)
     }
 }
