@@ -158,6 +158,9 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest){
         guard let subscriber = readRequestSubscribers[request.characteristic] else { return }
         let _ = subscriber.receive((peripheral,request))
+        peripheral.respond(
+            to: request,
+            withResult: .success)
     }
 
     
@@ -179,6 +182,9 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
         requests.forEach { request in
             guard let subscriber = writeRequestSubscribers[request.characteristic] else { return }
             let _ = subscriber.receive((peripheral,request))
+            peripheral.respond(
+                to: request,
+                withResult: .success)
         }
     }
 
