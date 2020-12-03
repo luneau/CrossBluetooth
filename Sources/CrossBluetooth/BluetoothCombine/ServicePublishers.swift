@@ -21,9 +21,7 @@ final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscrip
     private let serviceUUIDs: [CBUUID]?
     
     init(subscriber: SubscriberType, service : CBService , withServices serviceUUIDs: [CBUUID]? = nil) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.service = service
         self.serviceUUIDs = serviceUUIDs
         self.peripheralDelegateWrapper = service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
@@ -92,9 +90,7 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
     
     init(subscriber: SubscriberType, service : CBService , withServices serviceUUIDs: [CBUUID]? = nil,
          options: [String: Any]? = nil) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.service = service
         self.serviceUUIDs = serviceUUIDs
         self.peripheralDelegateWrapper = service.peripheral.delegate as? PeripheralDelegateWrapper ??  {

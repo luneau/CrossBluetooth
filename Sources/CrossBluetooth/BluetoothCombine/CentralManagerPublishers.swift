@@ -19,8 +19,7 @@ final class BTCentralManagerStateSubscription<SubscriberType: Subscriber>: Subsc
     private var centralDelegateWrapper : CentralManagerDelegateWrapper?
     init(subscriber: SubscriberType, centralManager: CBCentralManager) {
         self.centralManager = centralManager
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.centralDelegateWrapper = centralManager.delegate as?  CentralManagerDelegateWrapper ??  {
             let delegate = CentralManagerDelegateWrapper()
             centralManager.delegate  = delegate
@@ -77,8 +76,7 @@ final class BTCentralManagerScanSubscription<SubscriberType: Subscriber>: Subscr
     
     init(subscriber: SubscriberType, centralManager: CBCentralManager , withServices serviceUUIDs: [CBUUID]? ,
          options: [String: Any]? ) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.centralManager = centralManager
         self.serviceUUIDs = serviceUUIDs
         self.options = options

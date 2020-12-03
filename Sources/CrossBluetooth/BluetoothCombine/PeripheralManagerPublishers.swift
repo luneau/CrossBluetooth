@@ -20,8 +20,7 @@ final class BTReadRequestSubscription<SubscriberType: Subscriber>: Subscription 
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , characteristic: CBCharacteristic) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.characteristic = characteristic
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -75,8 +74,7 @@ final class BTPWriteRequestSubscription<SubscriberType: Subscriber>: Subscriptio
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , characteristic: CBCharacteristic) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.characteristic = characteristic
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -138,8 +136,7 @@ final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription
     }()
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , central : CBCentral, characteristic: CBMutableCharacteristic, value : Data) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.central = central
         self.characteristic = characteristic
@@ -228,8 +225,7 @@ final class BTIsReadyToUpdateValueSubscription<SubscriberType: Subscriber>: Subs
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , characteristic: CBMutableCharacteristic) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
        self.characteristic = characteristic
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -285,8 +281,7 @@ final class BTAdvertiseDataSubscription<SubscriberType: Subscriber>: Subscriptio
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , advertisementData: [String : Any]) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.advertisementData = advertisementData
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -342,8 +337,7 @@ final class BTAdvertiseServiceSubscription<SubscriberType: Subscriber>: Subscrip
     private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , service: CBMutableService) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.service = service
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -399,8 +393,7 @@ final class BTAdvertiseL2CAPChannelSubscription<SubscriberType: Subscriber>: Sub
     let encryption: Bool
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , withEncryption encryption: Bool = false) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.encryption = encryption
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
@@ -456,8 +449,7 @@ final class BTDidOpenL2CAPChannelSubscription<SubscriberType: Subscriber>: Subsc
     let psm : CBL2CAPPSM
     
     init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager , withPSM psm : CBL2CAPPSM) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheralManager = peripheralManager
         self.psm = psm
         self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {

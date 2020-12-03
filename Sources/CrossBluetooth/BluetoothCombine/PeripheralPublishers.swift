@@ -21,8 +21,7 @@ final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscripti
     private let peripheral: CBPeripheral
     
     init(subscriber: SubscriberType, peripheral : CBPeripheral ) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure>(receiveSubscription: { subscriber.receive(subscription: $0)}, receiveValue: {subscriber.receive($0)
-        }, receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheral = peripheral
         self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
@@ -34,10 +33,10 @@ final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscripti
     func request(_ demand: Subscribers.Demand) {
         guard let peripheralDelegateWrapper = self.peripheralDelegateWrapper else  { return }
         guard peripheralDelegateWrapper.rssiSubscriber == nil else {
-                // only one subscription per  manager
-                let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
-                return
-            }
+            // only one subscription per  manager
+            let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
+            return
+        }
         peripheralDelegateWrapper.rssiSubscriber = subscriber
         peripheral.delegate = peripheralDelegateWrapper
         
@@ -83,9 +82,7 @@ final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscr
     
     init(subscriber: SubscriberType, peripheral : CBPeripheral , withServices serviceUUIDs: [CBUUID]? = nil,
          options: [String: Any]? = nil) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheral = peripheral
         self.serviceUUIDs = serviceUUIDs
         self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
@@ -157,9 +154,7 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
     
     init(subscriber:  SubscriberType, centralManager: CBCentralManager, peripheral : CBPeripheral ,
          options: [String: Any]? = nil) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.centralManager = centralManager
         self.peripheral = peripheral
         self.options = options
@@ -227,9 +222,7 @@ final class BTPeripheralReadyToWriteSubscription<SubscriberType: Subscriber>: Su
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
     init(subscriber:  SubscriberType,  peripheral : CBPeripheral , attribute : CBAttribute) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheral = peripheral
         self.attribute = attribute
         self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
@@ -242,7 +235,7 @@ final class BTPeripheralReadyToWriteSubscription<SubscriberType: Subscriber>: Su
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else { return }
         guard let subscriber = self.subscriber else {return}
-       
+        
         guard peripheralDelegateWrapper?.peripheralReadySubscribers[attribute]  == nil else {
             subscriber.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
             return
@@ -290,11 +283,9 @@ final class BTPeripheralDidWriteSubscription<SubscriberType: Subscriber>: Subscr
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
     init(subscriber:  SubscriberType,  peripheral : CBPeripheral , attribute : CBAttribute) {
-        self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                      , receiveValue: {subscriber.receive($0)}
-                                                                                      , receiveCompletion: {subscriber.receive(completion: $0)})
-        self.peripheral = peripheral
+        self.subscriber = AnySubscriber(subscriber)
         self.attribute = attribute
+        self.peripheral = peripheral
         self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
             peripheral.delegate = delegate
@@ -305,7 +296,7 @@ final class BTPeripheralDidWriteSubscription<SubscriberType: Subscriber>: Subscr
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else { return }
         guard let subscriber = self.subscriber else {return}
-       
+        
         guard peripheralDelegateWrapper?.didWriteSubscribers[attribute]  == nil else {
             subscriber.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
             return
@@ -343,7 +334,7 @@ struct BTPeripheralDidWritePublisher: Publisher {
 }
 // MARK: - open L2CAP publisher
 final class BTOpenL2CAPSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBL2CAPChannel, SubscriberType.Failure == BluetoothError  {
-
+    
     public var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>?
     private let peripheral: CBPeripheral
     private let psm : CBL2CAPPSM
@@ -351,10 +342,8 @@ final class BTOpenL2CAPSubscription<SubscriberType: Subscriber>: Subscription wh
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
     init(subscriber: SubscriberType,  peripheral : CBPeripheral , psm : CBL2CAPPSM) {
-
-       self.subscriber = AnySubscriber<SubscriberType.Input,SubscriberType.Failure> (receiveSubscription: { subscriber.receive(subscription: $0)}
-                                                                                     , receiveValue: {subscriber.receive($0)}
-                                                                                     , receiveCompletion: {subscriber.receive(completion: $0)})
+        
+        self.subscriber = AnySubscriber(subscriber)
         self.peripheral = peripheral
         self.psm = psm
         self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
@@ -370,8 +359,8 @@ final class BTOpenL2CAPSubscription<SubscriberType: Subscriber>: Subscription wh
         
         
         guard peripheralDelegateWrapper?.peripheralDidOpenL2CAPSubscribers[psm]  == nil else {
-                subscriber.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
-                return
+            subscriber.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
+            return
             
         }
         peripheralDelegateWrapper?.peripheralDidOpenL2CAPSubscribers[psm] = subscriber
