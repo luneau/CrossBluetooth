@@ -140,10 +140,7 @@ struct BTPeripheralServicesPublisher: Publisher {
 
 
 // MARK: - connect publisher
-final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheral , CBPeripheralState), SubscriberType.Failure == BluetoothError {
-    
-    typealias Input = (CBPeripheral , CBPeripheralState)
-    typealias Failure = BluetoothError
+final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input ==  CBPeripheralState, SubscriberType.Failure == BluetoothError {
     
     public var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure>?
     private let centralManager: CBCentralManager
@@ -177,7 +174,7 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
         if peripheral.state == .disconnected {
             self.centralManager.connect(self.peripheral,options: self.options)
         }
-        let _ = subscriber.receive((peripheral , peripheral.state))
+        let _ = subscriber.receive( peripheral.state)
     }
     
     func cancel() {
@@ -192,7 +189,7 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
 }
 struct BTPeripheralConnectionStatePublisher: Publisher {
     
-    typealias Output = (CBPeripheral , CBPeripheralState)
+    typealias Output =  CBPeripheralState
     typealias Failure = BluetoothError
     
     let centralManager: CBCentralManager

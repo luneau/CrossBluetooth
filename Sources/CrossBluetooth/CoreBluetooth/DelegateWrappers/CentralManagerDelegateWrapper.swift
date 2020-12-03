@@ -14,7 +14,7 @@ final class CentralManagerDelegateWrapper: NSObject, CBCentralManagerDelegate {
     
     public var stateSubscriber : AnySubscriber<CBManagerState, Never>? = nil
     public var scanSubscriber: AnySubscriber<(CBCentralManager, ScannedDevice), BluetoothError>? = nil
-    public var connectionSuscribers = [CBPeripheral : AnySubscriber< (CBPeripheral , CBPeripheralState), BluetoothError>]()
+    public var connectionSuscribers = [CBPeripheral : AnySubscriber<CBPeripheralState, BluetoothError>]()
     
     deinit {
         print ("deinit CentralManagerDelegateWrapper")
@@ -38,7 +38,7 @@ final class CentralManagerDelegateWrapper: NSObject, CBCentralManagerDelegate {
         //self.centralManager(central: central, didConnect: peripheral)
         guard let subscriber = connectionSuscribers[peripheral] else {  return }
         //let _ = subscriber?.subscriber?.receive((peripheral , peripheral.state))
-        let _ = subscriber.receive((peripheral , peripheral.state))
+        let _ = subscriber.receive(peripheral.state)
     }
     
     func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {

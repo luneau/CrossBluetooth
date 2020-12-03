@@ -40,7 +40,7 @@ extension CBPeripheral {
 // MARK: - Connection Disconnection lifecyle updates publisher
 extension CBPeripheral {
     public func connect(_ centralManager: CBCentralManager,
-                 options: [String : Any]? = nil) -> AnyPublisher<(CBPeripheral , CBPeripheralState),BluetoothError>  {
+                 options: [String : Any]? = nil) -> AnyPublisher<CBPeripheralState,BluetoothError>  {
         
         return BTPeripheralConnectionStatePublisher (centralManager: centralManager, peripheral : self, options : options).eraseToAnyPublisher()
     }
