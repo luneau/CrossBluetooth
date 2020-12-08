@@ -21,7 +21,7 @@ extension CBService {
 // MARK: - CENTRAL : Scan Characteristics publisher (requires to be connected)
 
 extension CBService {
-    public func characteristicsPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<(CBService,[CBCharacteristic]), BluetoothError> {
-        return BTCharacteristicPublisher ( withService:  self,  withServices : serviceUUIDs).eraseToAnyPublisher()
+    public func characteristicsPublisher(forUUIDs uuids: [CBUUID]? = nil) -> AnyPublisher<(CBService,[CBCharacteristic]), BluetoothError> {
+        return BTCharacteristicPublisher ( withService:  self,  forUUIDs : uuids).eraseToAnyPublisher()
     }
 }

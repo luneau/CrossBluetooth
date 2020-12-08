@@ -86,13 +86,13 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
     
     private var subscriber: AnySubscriber<(CBService,[CBCharacteristic]), BluetoothError>? = nil
     private let service: CBService
-    private let serviceUUIDs: [CBUUID]?
+    private let uuids: [CBUUID]?
     
-    init(subscriber: SubscriberType, service : CBService , withServices serviceUUIDs: [CBUUID]? = nil,
+    init(subscriber: SubscriberType, service : CBService , forUUIDs uuids: [CBUUID]? = nil,
          options: [String: Any]? = nil) {
         self.subscriber = AnySubscriber(subscriber)
         self.service = service
-        self.serviceUUIDs = serviceUUIDs
+        self.uuids = uuids
         self.peripheralDelegateWrapper = service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
             service.peripheral.delegate = delegate
@@ -114,7 +114,7 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
         peripheralDelegateWrapper.characteristicSubscribers[service] = subscriber
         service.peripheral.delegate = peripheralDelegateWrapper
         if service.peripheral.state == .connected {
-            service.peripheral.discoverCharacteristics(serviceUUIDs, for: service)
+            service.peripheral.discoverCharacteristics(uuids, for: service)
         } else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(service.peripheral)))
         }
@@ -133,15 +133,15 @@ struct BTCharacteristicPublisher: Publisher {
     typealias Failure = BluetoothError
     
     private let service: CBService
-    let serviceUUIDs: [CBUUID]?
+    let uuids: [CBUUID]?
     
-    init(withService service: CBService ,withServices serviceUUIDs: [CBUUID]? = nil) {
+    init(withService service: CBService ,forUUIDs uuids: [CBUUID]? = nil) {
         self.service = service
-        self.serviceUUIDs = serviceUUIDs
+        self.uuids = uuids
     }
     
     func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
-        let subscription = BTCharacteristicSubscription(subscriber: subscriber , service: service, withServices : serviceUUIDs)
+        let subscription = BTCharacteristicSubscription(subscriber: subscriber , service: service, forUUIDs : uuids)
         subscriber.receive(subscription: subscription)
     }
 }
