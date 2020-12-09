@@ -493,3 +493,49 @@ struct BTDidOpenL2CAPChannelPublisher : Publisher {
         subscriber.receive(subscription: subscription)
     }
 }
+// MARK: - Peripheral :  Did subscribe to Characteritics
+
+final class BTDidSubscribeToCharacteristicSubscription<SubscriberType: Subscriber>: NSObject, Subscription where SubscriberType.Input == (CBCentral, CBCharacteristic,PubSubEvent), SubscriberType.Failure == Never  {
+    
+    public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
+    private let peripheralManager: CBPeripheralManager
+    private var delegateWrapper : PeripheralManagerDelegateWrapper? = nil
+    
+    init(subscriber: SubscriberType, peripheralManager: CBPeripheralManager) {
+        self.subscriber = AnySubscriber(subscriber)
+        self.peripheralManager = peripheralManager
+        self.delegateWrapper = peripheralManager.delegate as? PeripheralManagerDelegateWrapper ??  {
+            let delegate = PeripheralManagerDelegateWrapper()
+            peripheralManager.delegate = delegate
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        guard let delegateWrapper = delegateWrapper else { return}
+        delegateWrapper.notifySubscribers.append((self.hash,subscriber!))
+    }
+    
+    func cancel() {
+        delegateWrapper?.notifySubscribers.removeAll(where: {$0.0 == self.hash })
+        subscriber = nil
+        delegateWrapper = nil
+    }
+}
+
+struct BTDidSubscribeToCharacteristicPublisher : Publisher {
+    
+    typealias Output = (CBCentral,CBCharacteristic,PubSubEvent)
+    typealias Failure = Never
+    
+    let peripheralManager: CBPeripheralManager
+    
+    init(peripheralManager: CBPeripheralManager ) {
+        self.peripheralManager = peripheralManager
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTDidSubscribeToCharacteristicSubscription(subscriber: subscriber, peripheralManager: peripheralManager)
+        subscriber.receive(subscription: subscription)
+    }
+}

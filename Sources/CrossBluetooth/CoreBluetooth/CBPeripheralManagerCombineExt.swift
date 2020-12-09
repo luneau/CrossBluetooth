@@ -74,3 +74,9 @@ extension CBPeripheralManager {
         return BTDidOpenL2CAPChannelPublisher(peripheralManager: self, withPSM : psm).eraseToAnyPublisher()
     }
 }
+// MARK : - Did subscribe to Characteritics
+extension CBPeripheralManager {
+    public func didSubscribeToCharacteristic() -> AnyPublisher<(CBCentral,CBCharacteristic,PubSubEvent), Never>  {
+        return BTDidSubscribeToCharacteristicPublisher(peripheralManager: self).eraseToAnyPublisher()
+    }
+}

@@ -19,7 +19,7 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     public var stateSubscriber : AnySubscriber<CBManagerState, Never>? = nil
     public var advertisingSubscriber : AnySubscriber<CBPeripheralManager, BluetoothError>? = nil
     public var addServiceSubscribers =  [CBService : AnySubscriber<CBService, BluetoothError>]()
-    public var notifySubscribers =  [CBCharacteristic : AnySubscriber<(CBCentral,PubSubEvent), Never>]()
+    public var notifySubscribers =  [(Int,AnySubscriber<(CBCentral, CBCharacteristic, PubSubEvent), Never>)]()
     public var readRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
     public var writeRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
     public var updateValueSubscribers =  [CBCharacteristic : AnySubscriber<(CBMutableCharacteristic,Int), BluetoothError>]()
@@ -122,8 +122,7 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
      *
      */
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic){
-        guard let subscriber = notifySubscribers[characteristic] else { return }
-        let _ = subscriber.receive((central,.added))
+        notifySubscribers.forEach{ let _ =  $0.1.receive((central,characteristic,.added))}
     }
 
     
@@ -138,8 +137,8 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
      *
      */
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic){
-        guard let subscriber = notifySubscribers[characteristic] else { return }
-        let _ = subscriber.receive((central,.removed))
+            notifySubscribers.forEach{ let _ = $0.1.receive((central,characteristic,.removed))}
+    
     }
 
     
