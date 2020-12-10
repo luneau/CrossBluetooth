@@ -15,10 +15,7 @@ final class CentralManagerDelegateWrapper: NSObject, CBCentralManagerDelegate {
     public var stateSubscriber : AnySubscriber<CBManagerState, Never>? = nil
     public var scanSubscriber: AnySubscriber<(CBCentralManager, ScannedDevice), BluetoothError>? = nil
     public var connectionSuscribers = [CBPeripheral : AnySubscriber<CBPeripheralState, BluetoothError>]()
-    
-    deinit {
-        print ("deinit CentralManagerDelegateWrapper")
-    }
+   
     
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         

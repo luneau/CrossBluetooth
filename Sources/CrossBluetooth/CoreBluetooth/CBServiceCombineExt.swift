@@ -13,7 +13,7 @@ import Combine
 // MARK: -  CENTRAL : Scan Included Services publisher (requires to be connected)
 
 extension CBService {
-    public func includedServicesPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<(CBService,[CBService]), BluetoothError> {
+    public func includedServicesPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<[CBService], BluetoothError> {
         return BTIncludedServicesPublisher ( withService:  self,  withServices : serviceUUIDs).eraseToAnyPublisher()
     }
 }
@@ -21,7 +21,7 @@ extension CBService {
 // MARK: - CENTRAL : Scan Characteristics publisher (requires to be connected)
 
 extension CBService {
-    public func characteristicsPublisher(forUUIDs uuids: [CBUUID]? = nil) -> AnyPublisher<(CBService,[CBCharacteristic]), BluetoothError> {
+    public func characteristicsPublisher(forUUIDs uuids: [CBUUID]? = nil) -> AnyPublisher<[CBCharacteristic], BluetoothError> {
         return BTCharacteristicPublisher ( withService:  self,  forUUIDs : uuids).eraseToAnyPublisher()
     }
 }

@@ -27,9 +27,6 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     public var advertisingL2CAPSubscriber : AnySubscriber<(CBL2CAPPSM,PubSubEvent), BluetoothError>? = nil
     public var didOpenL2CAPSubscribers  = [CBL2CAPPSM : AnySubscriber<(CBL2CAPChannel,PubSubEvent), BluetoothError>]()
     
-    deinit {
-        print ("deinit PeripheralManagerDelegateWrapper")
-    }
     
     /**
      *  @method peripheralManagerDidUpdateState:

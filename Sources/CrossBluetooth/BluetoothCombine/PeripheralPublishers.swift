@@ -13,7 +13,7 @@ import Combine
 
 
 // MARK: - rssi publisher
-final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheral,Int), SubscriberType.Failure == BluetoothError  {
+/*final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheral,Int), SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -68,11 +68,11 @@ struct BTPeripheralRSSIPublisher: Publisher {
         let subscription = BTPeripheralRSSISubscription(subscriber: subscriber,peripheral: peripheral)
         subscriber.receive(subscription: subscription)
     }
-}
+}*/
 
 // MARK: - Scan Services publisher
 
-final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheral,[CBService],[CBService]), SubscriberType.Failure == BluetoothError  {
+final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == ([CBService],[CBService]), SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -91,7 +91,9 @@ final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscr
             return delegate
         }()
     }
-    
+    deinit {
+        cancel()
+    }
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else {
             return
@@ -108,7 +110,7 @@ final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscr
             peripheral.discoverServices(serviceUUIDs)
             if let services = peripheral.services {
                 if services.count > 0 {
-                    let _ = subscriber?.receive((peripheral,services, []))
+                    let _ = subscriber?.receive((services, []))
                 }
             }
         } else {
@@ -125,7 +127,7 @@ final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscr
 }
 struct BTPeripheralServicesPublisher: Publisher {
     
-    typealias Output = (CBPeripheral,[CBService],[CBService])
+    typealias Output = ([CBService],[CBService])
     typealias Failure = BluetoothError
     
     private let peripheral: CBPeripheral
@@ -153,6 +155,8 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
     private let options: [String: Any]?
     
     private var centralDelegateWrapper : CentralManagerDelegateWrapper?
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
     
     init(subscriber:  SubscriberType, centralManager: CBCentralManager, peripheral : CBPeripheral ,
          options: [String: Any]? = nil) {
@@ -165,8 +169,15 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
             centralManager.delegate  = delegate
             return delegate
         }()
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
+            let delegate = PeripheralDelegateWrapper()
+            peripheral.delegate = delegate
+            return delegate
+        }()
     }
-    
+    deinit {
+        cancel()
+    }
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else { return }
         guard let subscriber = self.subscriber else {return}
@@ -183,7 +194,8 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
     }
     
     func cancel() {
-        (peripheral.delegate as? PeripheralDelegateWrapper)?.finishAllSubscritions()
+        peripheralDelegateWrapper?.finishAllSubscritions()
+        peripheralDelegateWrapper = nil
         self.centralManager.cancelPeripheralConnection(peripheral)
         centralDelegateWrapper?.connectionSuscribers.removeValue(forKey: peripheral)
         centralDelegateWrapper = nil

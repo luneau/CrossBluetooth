@@ -12,11 +12,11 @@ import Combine
 
 // MARK: -  CENTRAL : Scan Included Services publisher
 
-final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBService,[CBService]), SubscriberType.Failure == BluetoothError  {
+final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == [CBService], SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBService,[CBService]), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let service: CBService
     private let serviceUUIDs: [CBUUID]?
     
@@ -60,7 +60,7 @@ final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscrip
 }
 struct BTIncludedServicesPublisher: Publisher {
     
-    typealias Output = (CBService,[CBService])
+    typealias Output = [CBService]
     typealias Failure = BluetoothError
     
     private let service: CBService
@@ -80,11 +80,11 @@ struct BTIncludedServicesPublisher: Publisher {
 
 // MARK: - CENTRAL : Scan Characteristics publisher
 
-final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBService,[CBCharacteristic]), SubscriberType.Failure == BluetoothError  {
+final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == [CBCharacteristic], SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBService,[CBCharacteristic]), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let service: CBService
     private let uuids: [CBUUID]?
     
@@ -129,7 +129,7 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
 }
 struct BTCharacteristicPublisher: Publisher {
     
-    typealias Output = (CBService,[CBCharacteristic])
+    typealias Output = [CBCharacteristic]
     typealias Failure = BluetoothError
     
     private let service: CBService

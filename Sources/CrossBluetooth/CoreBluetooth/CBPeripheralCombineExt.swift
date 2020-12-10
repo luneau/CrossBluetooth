@@ -24,15 +24,15 @@ extension CBPeripheral {
     }
 }
 // MARK: - RSSI updates publisher
-extension CBPeripheral {
+/*extension CBPeripheral {
     public func rssiPublisher() -> AnyPublisher<(CBPeripheral,Int),BluetoothError> {
         BTPeripheralRSSIPublisher(peripheral: self).eraseToAnyPublisher()
     }
-}
+}*/
 
 // MARK: - RSSI updates publisher
 extension CBPeripheral {
-    public func servicesPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<(CBPeripheral,[CBService],[CBService]),BluetoothError> {
+    public func servicesPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<([CBService],[CBService]),BluetoothError> {
         return BTPeripheralServicesPublisher ( peripheral : self,  withServices : serviceUUIDs).eraseToAnyPublisher()
     }
 }

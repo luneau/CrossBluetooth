@@ -13,10 +13,10 @@ import os.log
 final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     
     public var nameSubscriber : AnySubscriber<(CBPeripheral,String), Never>? = nil
-    public var rssiSubscriber : AnySubscriber<(CBPeripheral,Int), BluetoothError>? = nil
-    public var servicesSubscriber : AnySubscriber<(CBPeripheral,[CBService],[CBService]), BluetoothError>? = nil
-    public var includedServiceSubscribers = [CBService : AnySubscriber<(CBService,[CBService]), BluetoothError>]()
-    public var characteristicSubscribers = [CBService :AnySubscriber<(CBService,[CBCharacteristic]), BluetoothError>]()
+    //public var rssiSubscriber : AnySubscriber<(CBPeripheral,Int), BluetoothError>? = nil
+    public var servicesSubscriber : AnySubscriber<([CBService],[CBService]), BluetoothError>? = nil
+    public var includedServiceSubscribers = [CBService : AnySubscriber<[CBService], BluetoothError>]()
+    public var characteristicSubscribers = [CBService :AnySubscriber<[CBCharacteristic], BluetoothError>]()
     public var descriptorSubscribers = [CBCharacteristic :AnySubscriber<(CBCharacteristic,[CBDescriptor]), BluetoothError>]()
     public var valuesSubscribers = [CBAttribute : AnySubscriber<(CBAttribute,Data), BluetoothError>]()
     public var didWriteSubscribers = [CBAttribute : AnySubscriber<CBAttribute, BluetoothError>]()
@@ -26,7 +26,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     
     func finishAllSubscritions() {
         let _ = nameSubscriber?.receive(completion: .finished)
-        let _ = rssiSubscriber?.receive(completion: .finished)
+       // let _ = rssiSubscriber?.receive(completion: .finished)
         let _ = servicesSubscriber?.receive(completion: .finished)
         let _ = includedServiceSubscribers.map{ $0.value.receive(completion: .finished)}
         let _ = characteristicSubscribers.map{ $0.value.receive(completion: .finished)}
@@ -47,13 +47,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     func peripheralDidUpdateName(_ peripheral: CBPeripheral) {
         let _ = nameSubscriber?.receive((peripheral,peripheral.name!))
     }
-    override init(){
-        super.init()
-        print ("init PeripheralDelegateWrapper")
-    }
-    deinit {
-        print ("deinit PeripheralDelegateWrapper")
-    }
+   
     /**
      *  @method peripheral:didModifyServices:
      *
@@ -71,7 +65,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             includedServiceSubscribers.removeValue(forKey: service)
             characteristicSubscribers.removeValue(forKey: service)
         }
-            let _ = servicesSubscriber?.receive((peripheral,peripheral.services ?? [CBService](),invalidatedServices))
+            let _ = servicesSubscriber?.receive((peripheral.services ?? [CBService](),invalidatedServices))
     }
 
 
@@ -86,11 +80,11 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      *  @discussion            This method returns the result of a @link readRSSI: @/link call.
      */
      func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
-        guard error == nil else {
+       /* guard error == nil else {
             let _ = rssiSubscriber?.receive(completion: .failure(BluetoothError.peripheralRSSIReadFailed(peripheral, error)))
             return
         }
-        let _ = rssiSubscriber?.receive((peripheral, RSSI.intValue))
+        let _ = rssiSubscriber?.receive((peripheral, RSSI.intValue))*/
     }
 
     
@@ -109,7 +103,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = servicesSubscriber?.receive(completion: .failure(BluetoothError.servicesDiscoveryFailed(peripheral, error)))
             return
         }
-            let _ = servicesSubscriber?.receive((peripheral,peripheral.services ?? [CBService](),[CBService]()))
+            let _ = servicesSubscriber?.receive((peripheral.services ?? [CBService](),[CBService]()))
     }
 
     
@@ -129,7 +123,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = includedServicesSubscriber.receive(completion: .failure(BluetoothError.servicesDiscoveryFailed(peripheral, error)))
             return
         }
-        let _ = includedServicesSubscriber.receive((service,service.includedServices ?? [CBService]()))
+        let _ = includedServicesSubscriber.receive(service.includedServices ?? [CBService]())
     }
 
     
@@ -149,7 +143,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = characteristicsSubscriber.receive(completion: .failure(BluetoothError.characteristicsDiscoveryFailed(service,error)))
             return
         }
-        let _ = characteristicsSubscriber.receive((service,service.characteristics ?? [CBCharacteristic]()))
+        let _ = characteristicsSubscriber.receive(service.characteristics ?? [CBCharacteristic]())
     }
 
     
