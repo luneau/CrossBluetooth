@@ -106,6 +106,11 @@ final class BTPeripheralServicesSubscription<SubscriberType: Subscriber>: Subscr
         peripheralDelegateWrapper.servicesSubscriber = subscriber
         if peripheral.state == .connected {
             peripheral.discoverServices(serviceUUIDs)
+            if let services = peripheral.services {
+                if services.count > 0 {
+                    let _ = subscriber?.receive((peripheral,services, []))
+                }
+            }
         } else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(peripheral)))
         }
