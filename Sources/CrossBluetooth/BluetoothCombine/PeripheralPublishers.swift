@@ -194,7 +194,7 @@ final class BTPeripheralConnectionStateSubscription<SubscriberType: Subscriber>:
     }
     
     func cancel() {
-        peripheralDelegateWrapper?.finishAllSubscritions()
+        //peripheralDelegateWrapper?.finishAllSubscritions()
         peripheralDelegateWrapper = nil
         self.centralManager.cancelPeripheralConnection(peripheral)
         centralDelegateWrapper?.connectionSuscribers.removeValue(forKey: peripheral)
