@@ -119,6 +119,7 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
                     let _ = self.subscriber?.receive(completion: .finished)
                 }
             }
+        
     }
     
     private func  flushDataToSend() -> Int {
@@ -209,6 +210,10 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
                     let _ = self.subscriber?.receive(completion: .finished)
                 }
             }
+        let dataSent = self.flushDataToSend()
+        if dataSent >= self.payload.count {
+            let _ = self.subscriber?.receive(completion: .finished)
+        }
     }
     
     private func  flushDataToSend() -> Int {
