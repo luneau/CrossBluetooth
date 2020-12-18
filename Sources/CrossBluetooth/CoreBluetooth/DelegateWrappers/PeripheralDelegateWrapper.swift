@@ -17,8 +17,8 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     public var servicesSubscriber : AnySubscriber<([CBService],[CBService]), BluetoothError>? = nil
     public var includedServiceSubscribers = [CBService : AnySubscriber<[CBService], BluetoothError>]()
     public var characteristicSubscribers = [CBService :AnySubscriber<[CBCharacteristic], BluetoothError>]()
-    public var descriptorSubscribers = [CBCharacteristic :AnySubscriber<(CBCharacteristic,[CBDescriptor]), BluetoothError>]()
-    public var valuesSubscribers = [CBAttribute : AnySubscriber<(CBAttribute,Data), BluetoothError>]()
+    public var descriptorSubscribers = [CBCharacteristic :AnySubscriber<[CBDescriptor], BluetoothError>]()
+    public var valuesSubscribers = [CBAttribute : AnySubscriber<Data, BluetoothError>]()
     public var didWriteSubscribers = [CBAttribute : AnySubscriber<CBAttribute, BluetoothError>]()
     public var notifySubscribers = [CBCharacteristic :AnySubscriber<CBCharacteristic, BluetoothError>]()
     public var peripheralReadySubscribers  = [CBAttribute : AnySubscriber<Bool, BluetoothError>]()
@@ -162,7 +162,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = valueSubscriber.receive(completion: .failure(BluetoothError.characteristicUpdateValueFailed(characteristic, error)))
             return
         }
-        let _ = valueSubscriber.receive((characteristic, characteristic.value ?? Data()))
+        let _ = valueSubscriber.receive(characteristic.value ?? Data())
     }
 
     
@@ -222,7 +222,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
             let _ = descriptorSubscribers.receive(completion: .failure(BluetoothError.descriptorsDiscoveryFailed(characteristic,error)))
             return
         }
-        let _ = descriptorSubscribers.receive((characteristic,characteristic.descriptors ?? [CBDescriptor]()))
+        let _ = descriptorSubscribers.receive(characteristic.descriptors ?? [CBDescriptor]())
     }
 
     

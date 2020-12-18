@@ -18,7 +18,7 @@ import Combine
  *
  */
 extension CBCharacteristic {
-    public func descriptorPublisher() -> AnyPublisher<(CBCharacteristic,[CBDescriptor]), BluetoothError> {
+    public func descriptorPublisher() -> AnyPublisher<[CBDescriptor], BluetoothError> {
         return BTDescriptorPublisher ( withCharacteristic:  self).eraseToAnyPublisher()
     }
 }
@@ -26,21 +26,21 @@ extension CBCharacteristic {
 // MARK: -  CENTRAL : WriteWithoutResponse publisher
 
 extension CBCharacteristic {
-    public func writeWithoutResponsePublisher(withPayload payload : Data) -> AnyPublisher<(CBCharacteristic,Int), BluetoothError> {
+    public func writeWithoutResponsePublisher(withPayload payload : Data) -> AnyPublisher<Int, BluetoothError> {
         return BTWriteWithoutResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
 extension CBCharacteristic {
-    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<(CBCharacteristic,Int), BluetoothError> {
+    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<Int, BluetoothError> {
         return BTWriteWithResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
 // MARK: - CENTRAL : UpdateValue publisher
 
 extension CBCharacteristic {
-    public func didUpdateValuePublisher() -> AnyPublisher< (CBAttribute,Data), BluetoothError> {
+    public func didUpdateValuePublisher() -> AnyPublisher< Data, BluetoothError> {
         return BTDidUpdateValuePublisher( withCharacteristic:  self ).eraseToAnyPublisher()
     }
 }
@@ -48,7 +48,7 @@ extension CBCharacteristic {
 // MARK: - CENTRAL : ReadValue publisher
 
 extension CBCharacteristic {
-    public func readValuePublisher() -> AnyPublisher<(CBAttribute,Data), BluetoothError> {
+    public func readValuePublisher() -> AnyPublisher<Data, BluetoothError> {
         return BTReadValuePublisher( withCharacteristic:  self ).eraseToAnyPublisher()
     }
 }

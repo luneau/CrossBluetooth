@@ -30,7 +30,7 @@ extension CBPeripheral {
     }
 }*/
 
-// MARK: - RSSI updates publisher
+// MARK: - fetch servives publisher
 extension CBPeripheral {
     public func servicesPublisher(withServices serviceUUIDs: [CBUUID]? = nil) -> AnyPublisher<([CBService],[CBService]),BluetoothError> {
         return BTPeripheralServicesPublisher ( peripheral : self,  withServices : serviceUUIDs).eraseToAnyPublisher()

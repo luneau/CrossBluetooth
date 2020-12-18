@@ -11,11 +11,11 @@ import CoreBluetooth
 import Combine
 // MARK: -  CENTRAL : Scan Descriptor publisher
 
-final class BTDescriptorSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,[CBDescriptor]), SubscriberType.Failure == BluetoothError  {
+final class BTDescriptorSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == [CBDescriptor], SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBCharacteristic,[CBDescriptor]), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic ) {
@@ -57,7 +57,7 @@ final class BTDescriptorSubscription<SubscriberType: Subscriber>: Subscription w
 }
 struct BTDescriptorPublisher: Publisher {
     
-    typealias Output = (CBCharacteristic,[CBDescriptor])
+    typealias Output = [CBDescriptor]
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -75,11 +75,11 @@ struct BTDescriptorPublisher: Publisher {
 
 // MARK: -  CENTRAL : WriteWithoutResponse publisher
 
-final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
+final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBCharacteristic,Int), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input , SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     private let payload : Data
     private var isReadyToWriteCancelable : AnyCancellable? = nil
@@ -129,7 +129,7 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
                 let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
                 let range = cursorData..<(cursorData + chunkSize)
                 peripheral.writeValue(payload.subdata(in: range), for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
-                let _ = subscriber?.receive((characteristic,cursorData + range.count))
+                let _ = subscriber?.receive(cursorData + range.count)
                 cursorData += chunkSize
                 if !peripheral.canSendWriteWithoutResponse {
                     return cursorData
@@ -149,7 +149,7 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
 }
 struct BTWriteWithoutResponsePublisher: Publisher {
     
-    typealias Output = (CBCharacteristic,Int)
+    typealias Output = Int
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -167,11 +167,11 @@ struct BTWriteWithoutResponsePublisher: Publisher {
 }
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
-final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
+final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBCharacteristic,Int), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     private let payload : Data
     private var didWriteCancelable : AnyCancellable? = nil
@@ -222,7 +222,7 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
             let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
             let range = cursorData..<(cursorData + chunkSize)
             peripheral.writeValue(payload.subdata(in: range), for: characteristic, type: CBCharacteristicWriteType.withResponse)
-            let _ = subscriber?.receive((characteristic,cursorData + range.count))
+            let _ = subscriber?.receive(cursorData + range.count)
             cursorData += chunkSize
         }
         return cursorData
@@ -238,7 +238,7 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
 }
 struct BTWriteWithResponsePublisher: Publisher {
     
-    typealias Output = (CBCharacteristic,Int)
+    typealias Output = Int
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -257,11 +257,11 @@ struct BTWriteWithResponsePublisher: Publisher {
 
 // MARK: - CENTRAL : DidUpdateValue publisher
 
-final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBAttribute,Data), SubscriberType.Failure == BluetoothError  {
+final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
-    private var subscriber: AnySubscriber<(CBAttribute,Data), BluetoothError>? = nil
+    private var subscriber: AnySubscriber<SubscriberType.Input , SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic ) {
@@ -279,7 +279,7 @@ final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscripti
         }
         guard let subscriber = subscriber else { return }
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = subscriber
-        let _ = subscriber.receive((characteristic,Data()))
+        let _ = subscriber.receive(Data())
         
     }
     
@@ -293,7 +293,7 @@ final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscripti
 }
 struct BTDidUpdateValuePublisher: Publisher {
     
-    typealias Output = (CBAttribute,Data)
+    typealias Output = Data
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -374,7 +374,7 @@ struct BTSetNotificationPublisher: Publisher {
 
 // MARK: - CENTRAL : UpdateValue publisher
 
-final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBAttribute,Data), SubscriberType.Failure == BluetoothError  {
+final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
     
     
     private var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure >? = nil
@@ -409,7 +409,7 @@ final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription wh
 }
 struct BTReadValuePublisher: Publisher {
     
-    typealias Output = (CBAttribute,Data)
+    typealias Output = Data
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
