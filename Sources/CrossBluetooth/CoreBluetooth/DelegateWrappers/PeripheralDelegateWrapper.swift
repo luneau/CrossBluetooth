@@ -12,8 +12,8 @@ import os.log
 
 final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     
-    public var nameSubscriber : AnySubscriber<(CBPeripheral,String), Never>? = nil
-    //public var rssiSubscriber : AnySubscriber<(CBPeripheral,Int), BluetoothError>? = nil
+    public var nameSubscriber : AnySubscriber<String, Never>? = nil
+    public var rssiSubscriber : AnySubscriber<Int, BluetoothError>? = nil
     public var servicesSubscriber : AnySubscriber<([CBService],[CBService]), BluetoothError>? = nil
     public var includedServiceSubscribers = [CBService : AnySubscriber<[CBService], BluetoothError>]()
     public var characteristicSubscribers = [CBService :AnySubscriber<[CBCharacteristic], BluetoothError>]()
@@ -26,7 +26,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
     
     func finishAllSubscritions() {
         let _ = nameSubscriber?.receive(completion: .finished)
-       // let _ = rssiSubscriber?.receive(completion: .finished)
+        let _ = rssiSubscriber?.receive(completion: .finished)
         let _ = servicesSubscriber?.receive(completion: .finished)
         let _ = includedServiceSubscribers.map{ $0.value.receive(completion: .finished)}
         let _ = characteristicSubscribers.map{ $0.value.receive(completion: .finished)}
@@ -45,7 +45,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      *  @discussion            This method is invoked when the @link name @/link of <i>peripheral</i> changes.
      */
     func peripheralDidUpdateName(_ peripheral: CBPeripheral) {
-        let _ = nameSubscriber?.receive((peripheral,peripheral.name!))
+        let _ = nameSubscriber?.receive(peripheral.name ?? "missing name")
     }
    
     /**
@@ -80,11 +80,11 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      *  @discussion            This method returns the result of a @link readRSSI: @/link call.
      */
      func peripheral(_ peripheral: CBPeripheral, didReadRSSI RSSI: NSNumber, error: Error?) {
-       /* guard error == nil else {
+        guard error == nil else {
             let _ = rssiSubscriber?.receive(completion: .failure(BluetoothError.peripheralRSSIReadFailed(peripheral, error)))
             return
         }
-        let _ = rssiSubscriber?.receive((peripheral, RSSI.intValue))*/
+        let _ = rssiSubscriber?.receive( RSSI.intValue)
     }
 
     

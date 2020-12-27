@@ -13,7 +13,7 @@ import Combine
 
 
 // MARK: - rssi publisher
-/*final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheral,Int), SubscriberType.Failure == BluetoothError  {
+final class BTPeripheralRSSISubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -55,7 +55,7 @@ import Combine
 }
 
 struct BTPeripheralRSSIPublisher: Publisher {
-    typealias Output =  (CBPeripheral,Int)
+    typealias Output =  Int
     typealias Failure = BluetoothError
     
     private let peripheral: CBPeripheral
@@ -68,7 +68,7 @@ struct BTPeripheralRSSIPublisher: Publisher {
         let subscription = BTPeripheralRSSISubscription(subscriber: subscriber,peripheral: peripheral)
         subscriber.receive(subscription: subscription)
     }
-}*/
+}
 
 // MARK: - Scan Services publisher
 
