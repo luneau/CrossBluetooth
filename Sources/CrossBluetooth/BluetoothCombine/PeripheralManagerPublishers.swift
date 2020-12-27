@@ -12,7 +12,7 @@ import Combine
 
 // MARK: - Peripheral : Read Characteristic publisher
 
-final class BTReadRequestSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheralManager,CBATTRequest), SubscriberType.Failure == BluetoothError  {
+final class BTReadRequestSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBATTRequest, SubscriberType.Failure == BluetoothError  {
     
     public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
     private let peripheralManager: CBPeripheralManager
@@ -48,7 +48,7 @@ final class BTReadRequestSubscription<SubscriberType: Subscriber>: Subscription 
 }
 struct BTReadRequestPublisher : Publisher {
     
-    typealias Output = (CBPeripheralManager,CBATTRequest)
+    typealias Output = CBATTRequest
     typealias Failure = BluetoothError
     
     let peripheralManager: CBPeripheralManager
@@ -66,7 +66,7 @@ struct BTReadRequestPublisher : Publisher {
 }
 // MARK: - Peripheral : Write Characteristic publisher
 
-final class BTPWriteRequestSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBPeripheralManager,CBATTRequest), SubscriberType.Failure == BluetoothError  {
+final class BTPWriteRequestSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == CBATTRequest, SubscriberType.Failure == BluetoothError  {
     
     public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
     private let peripheralManager: CBPeripheralManager
@@ -102,7 +102,7 @@ final class BTPWriteRequestSubscription<SubscriberType: Subscriber>: Subscriptio
 }
 struct BTWriteRequestPublisher : Publisher {
     
-    typealias Output = (CBPeripheralManager,CBATTRequest)
+    typealias Output = CBATTRequest
     typealias Failure = BluetoothError
     
     let peripheralManager: CBPeripheralManager
@@ -120,7 +120,7 @@ struct BTWriteRequestPublisher : Publisher {
 }
 // MARK: - Peripheral : Update Characteristic publisher
 
-final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == (CBMutableCharacteristic,Int), SubscriberType.Failure == BluetoothError  {
+final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
     
     public var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>?
     private let peripheralManager: CBPeripheralManager
@@ -174,7 +174,7 @@ final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription
             let chunkSize = data.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : data.count - cursorData
             let range = cursorData..<(cursorData + chunkSize)
             if peripheralManager.updateValue(data.subdata(in: range), for: characteristic, onSubscribedCentrals: [central]) {
-                let _ = subscriber?.receive((characteristic,cursorData + range.count))
+                let _ = subscriber?.receive(cursorData + range.count)
                 cursorData += chunkSize
             } else {
                 return cursorData
@@ -193,7 +193,7 @@ final class BTPUpdateValueSubscription<SubscriberType: Subscriber>: Subscription
 }
 struct BTUpdateValuePublisher : Publisher {
     
-    typealias Output = (CBMutableCharacteristic,Int)
+    typealias Output = Int
     typealias Failure = BluetoothError
     
     let peripheralManager: CBPeripheralManager

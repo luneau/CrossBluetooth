@@ -12,7 +12,7 @@ import Combine
 
 
 // MARK: - state publisher
-extension CBPeripheral {
+extension CBPeripheral {  
     public func statePublisher() -> AnyPublisher<CBPeripheralState, Never> {
         self.publisher(for: \.state).eraseToAnyPublisher()
     }
@@ -24,11 +24,11 @@ extension CBPeripheral {
     }
 }
 // MARK: - RSSI updates publisher
-/*extension CBPeripheral {
-    public func rssiPublisher() -> AnyPublisher<(CBPeripheral,Int),BluetoothError> {
+extension CBPeripheral {
+    public func rssiPublisher() -> AnyPublisher<Int,BluetoothError> {
         BTPeripheralRSSIPublisher(peripheral: self).eraseToAnyPublisher()
     }
-}*/
+}
 
 // MARK: - fetch servives publisher
 extension CBPeripheral {

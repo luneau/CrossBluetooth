@@ -20,7 +20,7 @@ extension CBPeripheralManager {
 // MARK: - Peripheral : Read Characteristic publisher
 
 extension CBPeripheralManager {
-    public func readRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<(CBPeripheralManager,CBATTRequest), BluetoothError>  {
+    public func readRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<CBATTRequest, BluetoothError>  {
         return BTReadRequestPublisher(peripheralManager: self, characteristic: characteristic).eraseToAnyPublisher()
     }
 }
@@ -28,15 +28,22 @@ extension CBPeripheralManager {
 // MARK: - Peripheral : Write Characteristic publisher
 
 extension CBPeripheralManager {
-    public func writeRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<(CBPeripheralManager,CBATTRequest), BluetoothError>  {
+    public func writeRequestPublisher(forCharacteristic characteristic : CBCharacteristic) -> AnyPublisher<CBATTRequest, BluetoothError>  {
         return BTWriteRequestPublisher( peripheralManager: self, characteristic: characteristic).eraseToAnyPublisher()
+    }
+}
+
+// MARK: - Peripheral : Did subscribe to Characteritics
+extension CBPeripheralManager {
+    public func didSubscribeToCharacteristic() -> AnyPublisher<(CBCentral,CBCharacteristic,PubSubEvent), Never>  {
+        return BTDidSubscribeToCharacteristicPublisher(peripheralManager: self).eraseToAnyPublisher()
     }
 }
 
 // MARK: - Peripheral : Update Characteristic publisher
 
 extension CBPeripheralManager {
-    public func updateValuePublisher( central : CBCentral, characteristic : CBMutableCharacteristic ,value : Data) -> AnyPublisher<(CBMutableCharacteristic,Int), BluetoothError>  {
+    public func updateValuePublisher( central : CBCentral, characteristic : CBMutableCharacteristic ,value : Data) -> AnyPublisher<Int, BluetoothError>  {
         return BTUpdateValuePublisher( peripheralManager: self,central : central ,characteristic: characteristic, value : value ).eraseToAnyPublisher()
     }
 }
@@ -72,11 +79,5 @@ extension CBPeripheralManager {
 extension CBPeripheralManager {
     public func didOpenL2CAPChannel(psm: CBL2CAPPSM) -> AnyPublisher<(CBL2CAPChannel,PubSubEvent), BluetoothError>  {
         return BTDidOpenL2CAPChannelPublisher(peripheralManager: self, withPSM : psm).eraseToAnyPublisher()
-    }
-}
-// MARK : - Did subscribe to Characteritics
-extension CBPeripheralManager {
-    public func didSubscribeToCharacteristic() -> AnyPublisher<(CBCentral,CBCharacteristic,PubSubEvent), Never>  {
-        return BTDidSubscribeToCharacteristicPublisher(peripheralManager: self).eraseToAnyPublisher()
     }
 }

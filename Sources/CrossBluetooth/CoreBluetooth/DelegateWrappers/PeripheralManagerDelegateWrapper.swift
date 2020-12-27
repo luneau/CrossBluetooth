@@ -20,9 +20,9 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     public var advertisingSubscriber : AnySubscriber<CBPeripheralManager, BluetoothError>? = nil
     public var addServiceSubscribers =  [CBService : AnySubscriber<CBService, BluetoothError>]()
     public var notifySubscribers =  [(Int,AnySubscriber<(CBCentral, CBCharacteristic, PubSubEvent), Never>)]()
-    public var readRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
-    public var writeRequestSubscribers =  [CBCharacteristic : AnySubscriber<(CBPeripheralManager,CBATTRequest), BluetoothError>]()
-    public var updateValueSubscribers =  [CBCharacteristic : AnySubscriber<(CBMutableCharacteristic,Int), BluetoothError>]()
+    public var readRequestSubscribers =  [CBCharacteristic : AnySubscriber<CBATTRequest, BluetoothError>]()
+    public var writeRequestSubscribers =  [CBCharacteristic : AnySubscriber<CBATTRequest, BluetoothError>]()
+    public var updateValueSubscribers =  [CBCharacteristic : AnySubscriber<Int, BluetoothError>]()
     public var peripheralIsReadyToUpdateSubscribers  = [CBAttribute : AnySubscriber<Bool, Never>]()
     public var advertisingL2CAPSubscriber : AnySubscriber<(CBL2CAPPSM,PubSubEvent), BluetoothError>? = nil
     public var didOpenL2CAPSubscribers  = [CBL2CAPPSM : AnySubscriber<(CBL2CAPChannel,PubSubEvent), BluetoothError>]()
@@ -153,7 +153,7 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
      */
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveRead request: CBATTRequest){
         guard let subscriber = readRequestSubscribers[request.characteristic] else { return }
-        let _ = subscriber.receive((peripheral,request))
+        let _ = subscriber.receive(request)
         peripheral.respond(
             to: request,
             withResult: .success)
@@ -177,7 +177,7 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]){
         requests.forEach { request in
             guard let subscriber = writeRequestSubscribers[request.characteristic] else { return }
-            let _ = subscriber.receive((peripheral,request))
+            let _ = subscriber.receive(request)
             peripheral.respond(
                 to: request,
                 withResult: .success)
