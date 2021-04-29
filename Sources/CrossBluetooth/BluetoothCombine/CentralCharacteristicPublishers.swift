@@ -205,15 +205,13 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
                 self?.subscriber?.receive(completion: complet)
             } receiveValue: { [weak self]  _ in
                 guard let self = self else { return }
-                let dataSent = self.flushDataToSend()
-                if dataSent >= self.payload.count {
+                if self.cursorData >= self.payload.count {
                     let _ = self.subscriber?.receive(completion: .finished)
                 }
+                let _ = self.flushDataToSend()
+                
             }
-        let dataSent = self.flushDataToSend()
-        if dataSent >= self.payload.count {
-            let _ = self.subscriber?.receive(completion: .finished)
-        }
+        let _ = self.flushDataToSend()
     }
     
     private func  flushDataToSend() -> Int {
