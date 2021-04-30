@@ -195,8 +195,6 @@ final class PeripheralManagerDelegateWrapper: NSObject, CBPeripheralManagerDeleg
      *
      */
     func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager){
-        //guard let characteristicSubscriber = peripheralIsReadyToUpdateSubscribers.first?.value else { return }
-        //let _ = characteristicSubscriber.receive(true)
         peripheralIsReadyToUpdateSubscribers.values.forEach {
             let _ = $0.receive(true)
         }
