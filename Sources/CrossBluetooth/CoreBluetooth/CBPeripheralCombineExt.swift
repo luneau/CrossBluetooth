@@ -44,7 +44,7 @@ extension CBPeripheral {
         
         return BTPeripheralConnectionStatePublisher (centralManager: centralManager, peripheral : self, options : options).eraseToAnyPublisher()
     }
-    func disconnect(_ centralManager: CBCentralManager){
+    public func disconnect(_ centralManager: CBCentralManager){
         guard self.state != .connected else {return}
         centralManager.cancelPeripheralConnection(self)
         
