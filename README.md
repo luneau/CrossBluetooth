@@ -4,6 +4,8 @@ Aim to be crossplatform, actually work with iOS MacOS WatchOS TVOS (all CoreBlue
 
 It was inspired by [RxBluetoothKit] (https://github.com/Polidea/RxBluetoothKit)
 
+tested on iOS13 ... iOS15
+
 # WIP
-It's usable but not polished yet.
+It's usable but not polished yet. (maybe issues remains )
 Central and Peripheral are available to discover, publish, read write characteristic and L2CAP channel.

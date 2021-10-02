@@ -70,7 +70,17 @@ extension CBCharacteristic {
         }
     }
     public func openL2CAPPublisher(psm : CBL2CAPPSM) -> AnyPublisher<CBL2CAPChannel, BluetoothError> {
+        
+#if compiler(>=5.5)
+        guard  let service = self.service,
+               let peripheral = service.peripheral else {
+                   return Fail(error: BluetoothError.destroyed).eraseToAnyPublisher()
+               }
+        return BTOpenL2CAPPublisher( peripheral , psm : psm ).eraseToAnyPublisher()
+#else
         return BTOpenL2CAPPublisher( self.service.peripheral , psm : psm ).eraseToAnyPublisher()
+#endif
+        
     }
     
 }

@@ -17,19 +17,34 @@ final class BTDescriptorSubscription<SubscriberType: Subscriber>: Subscription w
     
     private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
+    private let peripheral : CBPeripheral?
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic ) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
     
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else {
+            return
+        }
+        guard let peripheral = peripheral else {
             return
         }
         guard let peripheralDelegateWrapper = self.peripheralDelegateWrapper else  { return }
@@ -40,11 +55,11 @@ final class BTDescriptorSubscription<SubscriberType: Subscriber>: Subscription w
         }
         
         peripheralDelegateWrapper.descriptorSubscribers[characteristic] = subscriber
-        characteristic.service.peripheral.delegate = peripheralDelegateWrapper
-        if characteristic.service.peripheral.state == .connected {
-            characteristic.service.peripheral.discoverDescriptors(for: characteristic)
+        peripheral.delegate = peripheralDelegateWrapper
+        if peripheral.state == .connected {
+            peripheral.discoverDescriptors(for: characteristic)
         } else {
-            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(characteristic.service.peripheral)))
+            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(peripheral)))
         }
     }
     
@@ -84,18 +99,33 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
     private let payload : Data
     private var isReadyToWriteCancelable : AnyCancellable? = nil
     private var cursorData = 0
+    private let peripheral : CBPeripheral?
+    
     private lazy var maximumTransmissionUnit : Int = {
         //20
-        characteristic.service.peripheral.maximumWriteValueLength(for: .withoutResponse)
+        peripheral?.maximumWriteValueLength(for: .withoutResponse) ?? 0
     }()
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic , payload : Data) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
         self.payload = payload
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+        
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        
+        self.peripheral = peripheral
+        
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -104,11 +134,13 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
         guard demand != .none else {
             return
         }
-        
+        guard let peripheral = peripheral else {
+            return
+        }
         guard isReadyToWriteCancelable == nil else { return } // should not happen but in case of mis-used
         
         
-        isReadyToWriteCancelable = characteristic.service.peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
+        isReadyToWriteCancelable = peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
             .filter { $0 }
             .sink { [weak self] complet in
                 self?.subscriber?.receive(completion: complet)
@@ -123,7 +155,9 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
     }
     
     private func  flushDataToSend() -> Int {
-        let peripheral = characteristic.service.peripheral
+        guard let peripheral = peripheral else {
+            return 0
+        }
         if peripheral.canSendWriteWithoutResponse {
             while (cursorData < payload.count) {
                 let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
@@ -176,18 +210,29 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
     private let payload : Data
     private var didWriteCancelable : AnyCancellable? = nil
     private var cursorData = 0
+    private let peripheral : CBPeripheral?
     private lazy var maximumTransmissionUnit : Int = {
         //20
-        characteristic.service.peripheral.maximumWriteValueLength(for: .withoutResponse)
+        peripheral?.maximumWriteValueLength(for: .withoutResponse) ?? 0
     }()
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic , payload : Data) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
         self.payload = payload
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -196,11 +241,14 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
         guard demand != .none else {
             return
         }
+        guard let peripheral = peripheral else {
+            return
+        }
         
         guard didWriteCancelable == nil else { return } // should not happen but in case of mis-used
         
         
-        didWriteCancelable = characteristic.service.peripheral.didWritePublisher(forAttribute: characteristic)
+        didWriteCancelable = peripheral.didWritePublisher(forAttribute: characteristic)
             .sink { [weak self] complet in
                 self?.subscriber?.receive(completion: complet)
             } receiveValue: { [weak self]  _ in
@@ -215,7 +263,9 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
     }
     
     private func  flushDataToSend() -> Int {
-        let peripheral = characteristic.service.peripheral
+        guard let peripheral = peripheral else {
+                    return 0
+                }
         if cursorData < payload.count {
             let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
             let range = cursorData..<(cursorData + chunkSize)
@@ -261,13 +311,24 @@ final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscripti
     
     private var subscriber: AnySubscriber<SubscriberType.Input , SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
+    private let peripheral : CBPeripheral?
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic ) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -316,14 +377,25 @@ final class BTSetNotificationSubscription<SubscriberType: Subscriber>: Subscript
     private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
     private let setValue : Bool
+    private let peripheral : CBPeripheral?
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic, setValue : Bool) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
         self.setValue = setValue
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -332,13 +404,18 @@ final class BTSetNotificationSubscription<SubscriberType: Subscriber>: Subscript
         guard demand != .none else {
             return
         }
+        
+        guard let peripheral = peripheral else {
+            return
+        }
+        
         guard peripheralDelegateWrapper?.notifySubscribers[characteristic] == nil else {
             // only one subscription per  manager
             let _ = subscriber?.receive(completion: .failure(BluetoothError.onlyOneSubscriberAuthorized))
             return
         }
         peripheralDelegateWrapper?.notifySubscribers[characteristic] = subscriber
-        characteristic.service.peripheral.setNotifyValue(setValue, for: characteristic)
+        peripheral.setNotifyValue(setValue, for: characteristic)
     }
     
     func cancel() {
@@ -378,13 +455,24 @@ final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription wh
     private var subscriber: AnySubscriber<SubscriberType.Input,SubscriberType.Failure >? = nil
     private let characteristic: CBCharacteristic
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    private let peripheral : CBPeripheral?
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic ) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
-        self.peripheralDelegateWrapper = characteristic.service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            characteristic.service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -393,7 +481,7 @@ final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription wh
         guard demand != .none else { return}
         guard let subscriber = subscriber else { return }
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = subscriber
-        characteristic.service.peripheral.readValue(for: characteristic)
+        peripheral?.readValue(for: characteristic)
         
     }
     

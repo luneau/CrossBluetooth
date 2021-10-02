@@ -19,14 +19,26 @@ final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscrip
     private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let service: CBService
     private let serviceUUIDs: [CBUUID]?
+    private let peripheral : CBPeripheral? 
     
     init(subscriber: SubscriberType, service : CBService , withServices serviceUUIDs: [CBUUID]? = nil) {
         self.subscriber = AnySubscriber(subscriber)
         self.service = service
         self.serviceUUIDs = serviceUUIDs
-        self.peripheralDelegateWrapper = service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            service.peripheral.delegate = delegate
+
+            peripheral.delegate = delegate
             return delegate
         }()
     }
@@ -35,6 +47,10 @@ final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscrip
         guard demand != .none else {
             return
         }
+        guard let peripheral = peripheral else {
+            return
+        }
+ 
         guard let peripheralDelegateWrapper = self.peripheralDelegateWrapper else  { return }
         guard peripheralDelegateWrapper.includedServiceSubscribers[service] == nil else {
             // only one subscription per  service àoç
@@ -43,11 +59,12 @@ final class BTIncludedServicesSubscription<SubscriberType: Subscriber>: Subscrip
         }
         
         peripheralDelegateWrapper.includedServiceSubscribers[service] = subscriber
-        service.peripheral.delegate = peripheralDelegateWrapper
-        if service.peripheral.state == .connected {
-            service.peripheral.discoverIncludedServices(serviceUUIDs, for: service)
+
+        peripheral.delegate = peripheralDelegateWrapper
+        if peripheral.state == .connected {
+            peripheral.discoverIncludedServices(serviceUUIDs, for: service)
         } else {
-            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(service.peripheral)))
+            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(peripheral)))
         }
     }
     
@@ -87,21 +104,35 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
     private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
     private let service: CBService
     private let uuids: [CBUUID]?
+    private let peripheral : CBPeripheral?
     
     init(subscriber: SubscriberType, service : CBService , forUUIDs uuids: [CBUUID]? = nil,
          options: [String: Any]? = nil) {
         self.subscriber = AnySubscriber(subscriber)
         self.service = service
         self.uuids = uuids
-        self.peripheralDelegateWrapper = service.peripheral.delegate as? PeripheralDelegateWrapper ??  {
+#if compiler(>=5.5)
+        guard let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
             let delegate = PeripheralDelegateWrapper()
-            service.peripheral.delegate = delegate
+            peripheral.delegate = delegate
             return delegate
         }()
     }
     
     func request(_ demand: Subscribers.Demand) {
         guard demand != .none else {
+            return
+        }
+        guard let peripheral = peripheral else {
             return
         }
         guard let peripheralDelegateWrapper = self.peripheralDelegateWrapper else  { return }
@@ -112,11 +143,11 @@ final class BTCharacteristicSubscription<SubscriberType: Subscriber>: Subscripti
         }
         
         peripheralDelegateWrapper.characteristicSubscribers[service] = subscriber
-        service.peripheral.delegate = peripheralDelegateWrapper
-        if service.peripheral.state == .connected {
-            service.peripheral.discoverCharacteristics(uuids, for: service)
+        peripheral.delegate = peripheralDelegateWrapper
+        if peripheral.state == .connected {
+            peripheral.discoverCharacteristics(uuids, for: service)
         } else {
-            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(service.peripheral)))
+            let _ = subscriber?.receive(completion: .failure(BluetoothError.peripheralIsNotConnected(peripheral)))
         }
     }
     
