@@ -213,7 +213,7 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
     private let peripheral : CBPeripheral?
     private lazy var maximumTransmissionUnit : Int = {
         //20
-        peripheral?.maximumWriteValueLength(for: .withoutResponse) ?? 0
+        peripheral?.maximumWriteValueLength(for: .withResponse) ?? 0
     }()
     
     init(subscriber: SubscriberType, characteristic : CBCharacteristic , payload : Data) {
