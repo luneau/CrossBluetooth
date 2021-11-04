@@ -30,6 +30,11 @@ extension CBCharacteristic {
         return BTWriteWithoutResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
+extension CBCharacteristic {
+    public func writeWithoutResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Int, BluetoothError> {
+        return BTDataWriteWithoutResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
+    }
+}
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
 extension CBCharacteristic {
@@ -37,6 +42,21 @@ extension CBCharacteristic {
         return BTWriteWithResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
+
+extension CBCharacteristic {
+    public func writeWithResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Int, BluetoothError> {
+        return BTDataWriteWithResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
+    }
+}
+// MARK: -  CENTRAL : Packet Data Publisher
+
+extension CBCharacteristic {
+    public func packetDataPublisher(forType type: CBCharacteristicWriteType) -> PacketDataSubject {
+        let mtu = self.service?.peripheral?.maximumWriteValueLength(for: type) ?? 23
+        return PacketDataSubject(withMtu: mtu)
+    }
+}
+
 // MARK: - CENTRAL : UpdateValue publisher
 
 extension CBCharacteristic {

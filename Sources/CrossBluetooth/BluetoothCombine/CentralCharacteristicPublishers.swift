@@ -174,7 +174,6 @@ final class BTWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subs
     }
     
     func cancel() {
-        isReadyToWriteCancelable?.cancel()
         isReadyToWriteCancelable = nil
         peripheralDelegateWrapper = nil
         subscriber = nil
@@ -196,6 +195,106 @@ struct BTWriteWithoutResponsePublisher: Publisher {
     
     func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
         let subscription = BTWriteWithoutResponseSubscription(subscriber: subscriber , characteristic: characteristic, payload : payload)
+        subscriber.receive(subscription: subscription)
+    }
+}
+
+final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
+    
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
+    private var subscriber: AnySubscriber<SubscriberType.Input , SubscriberType.Failure>? = nil
+    private let characteristic: CBCharacteristic
+    private let dataPublisherBuffer : Publishers.Buffer<AnyPublisher<Data, BluetoothError>>
+    private var isReadyToWriteCancelable : AnyCancellable? = nil
+    private var cursorData = 0
+    private let peripheral : CBPeripheral?
+    
+    private lazy var maximumTransmissionUnit : Int = {
+        //20
+        peripheral?.maximumWriteValueLength(for: .withoutResponse) ?? 0
+    }()
+    
+    init(subscriber: SubscriberType, characteristic : CBCharacteristic , publisher : AnyPublisher<Data, BluetoothError>) {
+        self.subscriber = AnySubscriber(subscriber)
+        self.characteristic = characteristic
+        self.dataPublisherBuffer = publisher.buffer(size: 2048, prefetch: .byRequest, whenFull: .dropNewest)
+        
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
+            let delegate = PeripheralDelegateWrapper()
+            peripheral.delegate = delegate
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        guard demand != .none else {
+            return
+        }
+        guard let peripheral = peripheral else {
+            return
+        }
+        guard isReadyToWriteCancelable == nil else { return } // should not happen but in case of mis-used
+        
+        isReadyToWriteCancelable = peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
+            .filter { $0 }
+            .flatMap { _ in
+                self.dataPublisherBuffer
+            }
+            .removeDuplicates()
+            .sink { [weak self] complet in
+                self?.subscriber?.receive(completion: complet)
+            } receiveValue: { [weak self]  data in
+                guard let self = self else { return }
+                self.sendPacket(data: data)
+            }
+    }
+    
+    private func sendPacket(data : Data)  {
+        guard let peripheral = peripheral else { return }
+        guard data.count <= maximumTransmissionUnit else {
+            let _ = subscriber?.receive(completion: .failure(.peripheralMTUMissMatch((maximumTransmissionUnit,data.count))))
+            return
+        }
+        
+        peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+        let _ = subscriber?.receive(cursorData + data.count)
+    }
+    
+    func cancel() {
+        isReadyToWriteCancelable = nil
+        peripheralDelegateWrapper = nil
+        subscriber = nil
+    }
+    
+}
+
+struct BTDataWriteWithoutResponsePublisher: Publisher {
+    
+    typealias Output = Int
+    typealias Failure = BluetoothError
+    
+    private let characteristic: CBCharacteristic
+    private let publisher : AnyPublisher<Data, BluetoothError>
+    
+    init(withCharacteristic characteristic: CBCharacteristic , publisher : AnyPublisher<Data, BluetoothError>) {
+        self.characteristic = characteristic
+        self.publisher = publisher
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTDataWriteWithoutResponseSubscription(subscriber: subscriber , characteristic: characteristic, publisher : publisher)
         subscriber.receive(subscription: subscription)
     }
 }
@@ -277,13 +376,13 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
     }
     
     func cancel() {
-        didWriteCancelable?.cancel()
         didWriteCancelable = nil
         peripheralDelegateWrapper = nil
         subscriber = nil
     }
     
 }
+
 struct BTWriteWithResponsePublisher: Publisher {
     
     typealias Output = Int
@@ -303,6 +402,111 @@ struct BTWriteWithResponsePublisher: Publisher {
     }
 }
 
+final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
+    
+    private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
+    
+    private var subscriber: AnySubscriber<SubscriberType.Input, SubscriberType.Failure>? = nil
+    private let characteristic: CBCharacteristic
+    private let dataPublisherBuffer : Publishers.Buffer<AnyPublisher<Data, BluetoothError>>
+    private var didWriteCancelable : AnyCancellable? = nil
+    private var dataBufferCancelable : AnyCancellable? = nil
+    private var cursorData = 0
+    private let peripheral : CBPeripheral?
+    private lazy var maximumTransmissionUnit : Int = {
+        //20
+        peripheral?.maximumWriteValueLength(for: .withResponse) ?? 0
+    }()
+    
+    init(subscriber: SubscriberType, characteristic : CBCharacteristic , publisher : AnyPublisher<Data, BluetoothError>) {
+        self.subscriber = AnySubscriber(subscriber)
+        self.characteristic = characteristic
+        self.dataPublisherBuffer = publisher.buffer(size: 2048, prefetch: .byRequest, whenFull: .dropNewest)
+#if compiler(>=5.5)
+        guard let service = characteristic.service, let peripheral = service.peripheral else {
+            self.peripheralDelegateWrapper = nil
+            self.peripheral = nil
+            return
+        }
+#else
+        let peripheral = characteristic.service.peripheral
+#endif
+        self.peripheral = peripheral
+        self.peripheralDelegateWrapper = peripheral.delegate as? PeripheralDelegateWrapper ??  {
+            let delegate = PeripheralDelegateWrapper()
+            peripheral.delegate = delegate
+            
+            
+            return delegate
+        }()
+    }
+    
+    func request(_ demand: Subscribers.Demand) {
+        guard demand != .none else {
+            return
+        }
+        guard let peripheral = peripheral else {
+            return
+        }
+        
+        guard didWriteCancelable == nil else { return } // should not happen but in case of mis-used
+        
+        didWriteCancelable = peripheral.didWritePublisher(forAttribute: characteristic)
+            .flatMap { _ in
+                self.dataPublisherBuffer
+            }
+            .removeDuplicates()
+            .sink { [weak self] complet in
+                self?.subscriber?.receive(completion: complet)
+            } receiveValue: { [weak self]  data in
+                self?.sendPacket(data:data)
+            }
+        dataBufferCancelable = dataPublisherBuffer.first()
+            .sink (receiveCompletion: { [weak self] completion in
+                self?.subscriber?.receive(completion: completion)
+            } ) { [weak self] data in
+            self?.sendPacket(data: data)
+        }
+    }
+    
+    private func  sendPacket(data : Data)  {
+        guard let peripheral = peripheral else { return }
+        guard data.count <= maximumTransmissionUnit else {
+            let _ = subscriber?.receive(completion: .failure(.peripheralMTUMissMatch((maximumTransmissionUnit,data.count))))
+            return
+        }
+        
+        peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+        let _ = subscriber?.receive(cursorData + data.count)
+        
+    }
+    
+    func cancel() {
+        didWriteCancelable = nil
+        peripheralDelegateWrapper = nil
+        subscriber = nil
+    }
+    
+}
+
+struct BTDataWriteWithResponsePublisher: Publisher {
+    
+    typealias Output = Int
+    typealias Failure = BluetoothError
+    
+    private let characteristic: CBCharacteristic
+    private let publisher : AnyPublisher<Data, BluetoothError>
+    
+    init(withCharacteristic characteristic: CBCharacteristic , publisher : AnyPublisher<Data, BluetoothError>) {
+        self.characteristic = characteristic
+        self.publisher = publisher
+    }
+    
+    func receive<S>(subscriber: S) where S : Subscriber, S.Failure == Self.Failure, S.Input == Self.Output {
+        let subscription = BTDataPublisherWriteWithResponseSubscription(subscriber: subscriber , characteristic: characteristic, publisher: publisher)
+        subscriber.receive(subscription: subscription)
+    }
+}
 // MARK: - CENTRAL : DidUpdateValue publisher
 
 final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
@@ -334,14 +538,11 @@ final class BTDidUpdateValueSubscription<SubscriberType: Subscriber>: Subscripti
     }
     
     func request(_ demand: Subscribers.Demand) {
-        guard demand != .none else { return
-        }
+        guard demand != .none else { return }
         guard let subscriber = subscriber else { return }
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = subscriber
         let _ = subscriber.receive(Data())
-        
     }
-    
     
     func cancel() {
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = nil
@@ -366,7 +567,6 @@ struct BTDidUpdateValuePublisher: Publisher {
         subscriber.receive(subscription: subscription)
     }
 }
-
 
 // MARK: - CENTRAL : ask for notfication publisher
 
@@ -445,8 +645,6 @@ struct BTSetNotificationPublisher: Publisher {
 }
 
 
-
-
 // MARK: - CENTRAL : UpdateValue publisher
 
 final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
@@ -482,17 +680,15 @@ final class BTReadValueSubscription<SubscriberType: Subscriber>: Subscription wh
         guard let subscriber = subscriber else { return }
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = subscriber
         peripheral?.readValue(for: characteristic)
-        
     }
-    
     
     func cancel() {
         peripheralDelegateWrapper?.valuesSubscribers[characteristic] = nil
         peripheralDelegateWrapper = nil
         subscriber = nil
     }
-    
 }
+
 struct BTReadValuePublisher: Publisher {
     
     typealias Output = Data

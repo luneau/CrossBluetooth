@@ -5,7 +5,7 @@ public enum BluetoothError: Error {
     case destroyed
     // Emitted when `CentralManager.scanForPeripherals` called and there is already ongoing scan
     case scanInProgress
-    // Emitted when `PeripheralManager.startAdvertising` called and there is already ongoing advertisement
+    // Emitted when `PeripheralManager.startAdvertising` called andm there is already ongoing advertisement
     case advertisingInProgress
     case onlyOneSubscriberAuthorized
     case advertisingStartFailed(Error)
@@ -21,6 +21,7 @@ public enum BluetoothError: Error {
     case peripheralDisconnected(CBPeripheral, Error?)
     case peripheralRSSIReadFailed(CBPeripheral, Error?)
     case peripheralIsNotConnected(CBPeripheral)
+    case peripheralMTUMissMatch((Int,Int))
     // Services
     case servicesDiscoveryFailed(CBPeripheral, Error?)
     case includedServicesDiscoveryFailed(CBPeripheral, Error?)
@@ -130,6 +131,8 @@ extension BluetoothError: CustomStringConvertible {
         // Unknown
         case .unknownWriteType:
             return "Unknown write type"
+        case .peripheralMTUMissMatch(let value ):
+            return "mtu mismatched please check it up packet size expected \(value.0) received \(value.1)"
         }
     }
 }
