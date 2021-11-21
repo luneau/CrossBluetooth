@@ -205,10 +205,15 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
     
     private var subscriber: AnySubscriber<SubscriberType.Input , SubscriberType.Failure>? = nil
     private let characteristic: CBCharacteristic
-    private let dataPublisherBuffer : Publishers.Buffer<AnyPublisher<Data, BluetoothError>>
+    private let dataPublisherBuffer : AnyPublisher<Data, BluetoothError>
     private var isReadyToWriteCancelable : AnyCancellable? = nil
+    private var isReadyToSendCancelable : AnyCancellable? = nil
+    private var dataPublisherCancelable : AnyCancellable? = nil
     private var cursorData = 0
     private let peripheral : CBPeripheral?
+    
+    @Published private var isReadyToSend : Bool = true
+    private var dataQueue = [Data]()
     
     private lazy var maximumTransmissionUnit : Int = {
         //20
@@ -218,7 +223,7 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
     init(subscriber: SubscriberType, characteristic : CBCharacteristic , publisher : AnyPublisher<Data, BluetoothError>) {
         self.subscriber = AnySubscriber(subscriber)
         self.characteristic = characteristic
-        self.dataPublisherBuffer = publisher.buffer(size: 2048, prefetch: .byRequest, whenFull: .dropNewest)
+        self.dataPublisherBuffer = publisher
         
 #if compiler(>=5.5)
         guard let service = characteristic.service, let peripheral = service.peripheral else {
@@ -246,34 +251,52 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
             return
         }
         guard isReadyToWriteCancelable == nil else { return } // should not happen but in case of mis-used
-        
         isReadyToWriteCancelable = peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
-            .filter { $0 }
-            .flatMap { _ in
-                self.dataPublisherBuffer
-            }
-            .removeDuplicates()
+            .sink(receiveCompletion: {_ in}, receiveValue: { [weak self] _ in
+                self?.isReadyToSend = true
+            })
+        isReadyToSendCancelable = $isReadyToSend.sink { [weak self] value in
+            guard let self = self else { return }
+            guard value else { return }
+            repeat {
+                guard let data = self.dataQueue.first else { return }
+                self.dataQueue.removeFirst()
+                guard self.sendPacket(data: data) else { return }
+            } while !self.dataQueue.isEmpty
+        }
+        
+        dataPublisherCancelable = self.dataPublisherBuffer
             .sink { [weak self] complet in
                 self?.subscriber?.receive(completion: complet)
             } receiveValue: { [weak self]  data in
                 guard let self = self else { return }
-                self.sendPacket(data: data)
+                let _ = self.sendPacket(data: data)
             }
     }
     
-    private func sendPacket(data : Data)  {
-        guard let peripheral = peripheral else { return }
+    private func sendPacket(data : Data) -> Bool {
+        guard let peripheral = peripheral else { return false }
         guard data.count <= maximumTransmissionUnit else {
             let _ = subscriber?.receive(completion: .failure(.peripheralMTUMissMatch((maximumTransmissionUnit,data.count))))
-            return
+            return false
         }
-        
-        peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
-        let _ = subscriber?.receive(cursorData + data.count)
+        if peripheral.canSendWriteWithoutResponse {
+            peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
+            let _ = subscriber?.receive(cursorData + data.count)
+            return true
+        } else {
+            print ("queue data")
+            isReadyToSend = false
+            dataQueue.append(data)
+            return false
+            
+        }
     }
     
     func cancel() {
         isReadyToWriteCancelable = nil
+        isReadyToSendCancelable = nil
+        dataPublisherCancelable = nil
         peripheralDelegateWrapper = nil
         subscriber = nil
     }
@@ -363,8 +386,8 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
     
     private func  flushDataToSend() -> Int {
         guard let peripheral = peripheral else {
-                    return 0
-                }
+            return 0
+        }
         if cursorData < payload.count {
             let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
             let range = cursorData..<(cursorData + chunkSize)
@@ -465,8 +488,8 @@ final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscri
             .sink (receiveCompletion: { [weak self] completion in
                 self?.subscriber?.receive(completion: completion)
             } ) { [weak self] data in
-            self?.sendPacket(data: data)
-        }
+                self?.sendPacket(data: data)
+            }
     }
     
     private func  sendPacket(data : Data)  {
@@ -705,3 +728,4 @@ struct BTReadValuePublisher: Publisher {
         subscriber.receive(subscription: subscription)
     }
 }
+
