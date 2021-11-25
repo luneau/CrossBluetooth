@@ -199,7 +199,7 @@ struct BTWriteWithoutResponsePublisher: Publisher {
     }
 }
 
-final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
+final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -213,7 +213,7 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
     private let peripheral : CBPeripheral?
     
     @Published private var isReadyToSend : Bool = true
-    private var dataQueue = [Data]()
+    private var dataQueue = SynchronizedArray<Data>()
     
     private lazy var maximumTransmissionUnit : Int = {
         //20
@@ -255,22 +255,31 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
             .sink(receiveCompletion: {_ in}, receiveValue: { [weak self] _ in
                 self?.isReadyToSend = true
             })
-        isReadyToSendCancelable = $isReadyToSend.sink { [weak self] value in
-            guard let self = self else { return }
-            guard value else { return }
-            repeat {
-                guard let data = self.dataQueue.first else { return }
-                self.dataQueue.removeFirst()
-                guard self.sendPacket(data: data) else { return }
-            } while !self.dataQueue.isEmpty
-        }
+        isReadyToSendCancelable = $isReadyToSend
+            .dropFirst()
+            .sink { [weak self] value in
+                guard let self = self else { return }
+                guard value else { return }
+                repeat {
+                    guard let data = self.dataQueue.first else { return }
+                    guard self.sendPacket(data: data) else { return }
+                    self.dataQueue.removeFirst()
+                } while !self.dataQueue.isEmpty
+            }
         
         dataPublisherCancelable = self.dataPublisherBuffer
             .sink { [weak self] complet in
                 self?.subscriber?.receive(completion: complet)
             } receiveValue: { [weak self]  data in
                 guard let self = self else { return }
-                let _ = self.sendPacket(data: data)
+                if  self.dataQueue.isEmpty {
+                    guard  !self.sendPacket(data: data) else {
+                        // if sent don't queue it
+                        return
+                    }
+                }
+                self.dataQueue.append(data)
+                
             }
     }
     
@@ -282,12 +291,10 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
         }
         if peripheral.canSendWriteWithoutResponse {
             peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withoutResponse)
-            let _ = subscriber?.receive(cursorData + data.count)
+            let _ = subscriber?.receive(data)
             return true
         } else {
-            print ("queue data")
             isReadyToSend = false
-            dataQueue.append(data)
             return false
             
         }
@@ -305,7 +312,7 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
 
 struct BTDataWriteWithoutResponsePublisher: Publisher {
     
-    typealias Output = Int
+    typealias Output = Data
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -323,7 +330,7 @@ struct BTDataWriteWithoutResponsePublisher: Publisher {
 }
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
-final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
+final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -391,8 +398,9 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
         if cursorData < payload.count {
             let chunkSize = payload.count - cursorData > maximumTransmissionUnit ? maximumTransmissionUnit : payload.count - cursorData
             let range = cursorData..<(cursorData + chunkSize)
-            peripheral.writeValue(payload.subdata(in: range), for: characteristic, type: CBCharacteristicWriteType.withResponse)
-            let _ = subscriber?.receive(cursorData + range.count)
+            let subdata = payload.subdata(in: range)
+            peripheral.writeValue(subdata, for: characteristic, type: CBCharacteristicWriteType.withResponse)
+            let _ = subscriber?.receive(subdata)
             cursorData += chunkSize
         }
         return cursorData
@@ -408,7 +416,7 @@ final class BTWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscri
 
 struct BTWriteWithResponsePublisher: Publisher {
     
-    typealias Output = Int
+    typealias Output = Data
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -425,7 +433,7 @@ struct BTWriteWithResponsePublisher: Publisher {
     }
 }
 
-final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Int, SubscriberType.Failure == BluetoothError  {
+final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscriber>: Subscription where SubscriberType.Input == Data, SubscriberType.Failure == BluetoothError  {
     
     private var peripheralDelegateWrapper : PeripheralDelegateWrapper?
     
@@ -500,7 +508,7 @@ final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscri
         }
         
         peripheral.writeValue(data, for: characteristic, type: CBCharacteristicWriteType.withResponse)
-        let _ = subscriber?.receive(cursorData + data.count)
+        let _ = subscriber?.receive(data)
         
     }
     
@@ -514,7 +522,7 @@ final class BTDataPublisherWriteWithResponseSubscription<SubscriberType: Subscri
 
 struct BTDataWriteWithResponsePublisher: Publisher {
     
-    typealias Output = Int
+    typealias Output = Data
     typealias Failure = BluetoothError
     
     private let characteristic: CBCharacteristic
@@ -729,3 +737,71 @@ struct BTReadValuePublisher: Publisher {
     }
 }
 
+// MARK: -
+// MARK: Utilities
+private class SynchronizedArray<T>  {
+    private var array: [T] = []
+    private let accessQueue = DispatchQueue(label: "SynchronizedArrayAccess", attributes: .concurrent)
+    
+    public func append(_ newElement: T) {
+        
+        self.accessQueue.async(flags:.barrier) {
+            self.array.append(newElement)
+        }
+    }
+    
+    public func removeAtIndex(index: Int) {
+        
+        self.accessQueue.async(flags:.barrier) {
+            self.array.remove(at: index)
+        }
+    }
+    public func removeFirst() {
+        removeAtIndex(index: 0)
+    }
+    public var count: Int {
+        var count = 0
+        
+        self.accessQueue.sync {
+            count = self.array.count
+        }
+        return count
+    }
+    var isEmpty : Bool  {
+        get {
+            count == 0
+        }
+    }
+    public var first : T? {
+        get {
+            var element: T?
+            
+            self.accessQueue.sync {
+                if !self.array.isEmpty {
+                    element = self.array[0]
+                }
+            }
+            return element
+        }
+    }
+    
+    public func dequeue() -> T? {
+        guard  let element = first else { return nil }
+        removeAtIndex(index: 0)
+        return element
+    }
+    public subscript(index: Int) -> T {
+        set {
+            self.accessQueue.async(flags:.barrier) {
+                self.array[index] = newValue
+            }
+        }
+        get {
+            var element: T!
+            self.accessQueue.sync {
+                element = self.array[index]
+            }
+            return element
+        }
+    }
+}

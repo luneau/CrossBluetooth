@@ -31,20 +31,20 @@ extension CBCharacteristic {
     }
 }
 extension CBCharacteristic {
-    public func writeWithoutResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Int, BluetoothError> {
+    public func writeWithoutResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
         return BTDataWriteWithoutResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
     }
 }
 // MARK: -  CENTRAL : WriteWithResponse publisher
 
 extension CBCharacteristic {
-    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<Int, BluetoothError> {
+    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<Data, BluetoothError> {
         return BTWriteWithResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
     }
 }
 
 extension CBCharacteristic {
-    public func writeWithResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Int, BluetoothError> {
+    public func writeWithResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
         return BTDataWriteWithResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
     }
 }
