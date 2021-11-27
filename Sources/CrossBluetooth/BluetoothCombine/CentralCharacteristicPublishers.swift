@@ -256,7 +256,6 @@ final class BTDataWriteWithoutResponseSubscription<SubscriberType: Subscriber>: 
                 self?.isReadyToSend = true
             })
         isReadyToSendCancelable = $isReadyToSend
-            .dropFirst()
             .sink { [weak self] value in
                 guard let self = self else { return }
                 guard value else { return }
