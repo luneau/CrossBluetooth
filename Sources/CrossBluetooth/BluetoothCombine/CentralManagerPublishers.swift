@@ -94,18 +94,16 @@ final class BTCentralManagerScanSubscription<SubscriberType: Subscriber>: Subscr
         }
         centralDelegateWrapper?.scanSubscriber = subscriber
         
-        if centralManager.state == .poweredOn  {
-            if !centralManager.isScanning {
+        if centralManager.state == .poweredOn && !centralManager.isScanning {
                 centralManager.scanForPeripherals(withServices:serviceUUIDs, options: options)
             }
-        }
     }
     
     func cancel() {
         subscriber = nil
         centralDelegateWrapper?.scanSubscriber = nil
         centralDelegateWrapper = nil
-        if centralManager.isScanning {
+        if centralManager.isScanning && centralManager.state == .poweredOn {
             centralManager.stopScan()
         }
     }
