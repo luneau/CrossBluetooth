@@ -73,6 +73,7 @@ final class BTCentralManagerScanSubscription<SubscriberType: Subscriber>: Subscr
     private let serviceUUIDs: [CBUUID]?
     private let options: [String: Any]?
     private var centralDelegateWrapper : CentralManagerDelegateWrapper?
+    private var scanningStateCancelable : AnyCancellable? = nil
     
     init(subscriber: SubscriberType, centralManager: CBCentralManager , withServices serviceUUIDs: [CBUUID]? ,
          options: [String: Any]? ) {
@@ -91,6 +92,11 @@ final class BTCentralManagerScanSubscription<SubscriberType: Subscriber>: Subscr
         guard centralDelegateWrapper?.scanSubscriber == nil else {
             let _ = subscriber?.receive(completion: .failure(BluetoothError.scanInProgress))
             return
+        }
+        scanningStateCancelable = centralManager.publisher(for: \.isScanning).dropFirst().sink { [weak self] isScanning in
+            if !isScanning {
+                self?.subscriber?.receive(completion: .finished)
+            }
         }
         centralDelegateWrapper?.scanSubscriber = subscriber
         
