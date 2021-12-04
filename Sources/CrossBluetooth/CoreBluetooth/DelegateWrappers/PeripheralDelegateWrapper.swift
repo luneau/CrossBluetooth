@@ -204,7 +204,7 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
         guard let notifySubscriber = notifySubscribers[characteristic] else { return }
         if let error = error  {
             let err = error as NSError
-            if err.domain == CBATTErrorDomain && err.code == 15{
+            if err.domain == CBATTErrorDomain && err.code == 15 {
                 let _ = notifySubscriber.receive(completion: .failure(BluetoothError.characteristicEncryptionInsufficient(characteristic, error)))
                 return
             }
