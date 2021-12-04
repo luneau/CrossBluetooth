@@ -23,58 +23,14 @@ extension CBCharacteristic {
     }
 }
 
-// MARK: -  CENTRAL : WriteWithoutResponse publisher
+// MARK: -  CENTRAL : Write publisher (with or without response)
 
-@available(*, deprecated, message: "Kinda of useless use writePacketsPublisher instead")
-extension CBCharacteristic {
-    public func writeWithoutResponsePublisher(withPayload payload : Data) -> AnyPublisher<Int, BluetoothError> {
-        return BTWriteWithoutResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
-    }
-}
-
-@available(*, deprecated, message: "Kinda of useless use writePacketsPublisher instead")
-extension CBCharacteristic {
-    public func writeWithoutResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
-        return BTDataWriteWithoutResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
-    }
-}
-// MARK: -  CENTRAL : WriteWithResponse publisher
-@available(*, deprecated, message: "Kinda of useless use writePacketsPublisher instead")
-extension CBCharacteristic {
-    public func writeWithResponsePublisher(withPayload payload : Data) -> AnyPublisher<Data, BluetoothError> {
-        return BTWriteWithResponsePublisher( withCharacteristic:  self, payload : payload ).eraseToAnyPublisher()
-    }
-}
-
-@available(*, deprecated, message: "Kinda of useless use writePacketsPublisher instead")
-extension CBCharacteristic {
-    public func writeWithResponsePublisher(withDataPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
-        return BTDataWriteWithResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
-    }
-}
-// MARK: -  CENTRAL : Packet Data Publisher
-
-@available(*, deprecated, message: "Kinda of uselessavoid using it")
-extension CBCharacteristic {
-    public func packetDataPublisher(forType type: CBCharacteristicWriteType) -> PacketDataSubject {
-        let mtu = self.service?.peripheral?.maximumWriteValueLength(for: type) ?? 23
-        return PacketDataSubject(withMtu: mtu)
-    }
-}
 
 extension CBCharacteristic {
-    public func writePacketsPublisher( writeType type: CBCharacteristicWriteType , dataPacketsPublisher publisher : AnyPublisher<Data, BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
-        switch type {
-        case .withResponse:
-            return BTDataWriteWithResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
-        case .withoutResponse:
-            return BTDataWriteWithoutResponsePublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
-        @unknown default:
-            fatalError()
-        }
+    public func writePacketsPublisher(dataPacketsPublisher publisher : AnyPublisher<(CBCharacteristicWriteType,Data), BluetoothError>) -> AnyPublisher<Data, BluetoothError> {
+        return BTWritePacketsPublisher( withCharacteristic:  self, publisher : publisher ).eraseToAnyPublisher()
     }
 }
-// MARK: -  CENTRAL : Write publisher
 
 // MARK: - CENTRAL : UpdateValue publisher
 
