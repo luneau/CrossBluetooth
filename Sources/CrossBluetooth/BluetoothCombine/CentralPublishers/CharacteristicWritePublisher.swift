@@ -65,23 +65,32 @@ final class BTWritePacketsSubscription<SubscriberType: Subscriber>: Subscription
         guard let peripheral = peripheral else {
             return
         }
-        guard isReadyToWriteCancellable == nil else { return } // should not happen but in case of mis-used
+        guard isReadyToWriteCancellable == nil else {
+            subscriber?.receive(completion: .failure(.misUsedAPI("isReadyToWrite observer already set and it shouldn't")))
+            return
+            
+        } // should not happen but in case of mis-used
+        
+        // observe write without response status
         isReadyToWriteCancellable = peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
             .sink(receiveCompletion: {_ in}, receiveValue: { [weak self] _ in
                 self?.isReadyToSend = true
             })
+        
+        // observe write with reponse sent status
         didWriteCancellable = peripheral.didWritePublisher(forAttribute: characteristic)
-            .sink(receiveCompletion: { completion in
-                
+            .sink(receiveCompletion: { [weak self ]completion in
+                self?.subscriber?.receive(completion: completion)
             }, receiveValue: { [weak self]_ in
                 guard let self = self else { return }
                 guard let packet = self.packetQueue.first else { return }
                 let _ = self.subscriber?.receive(packet.data)
+                self.packetQueue.removeFirst()
                 self.isReadyToSend = true
                 
             })
         
-        
+        // we can send packet either a write with response or if without reponse buffer has available slots
         isReadyToSendCancellable = $isReadyToSend
             .sink { [weak self] value in
                 guard let self = self else { return }
@@ -93,12 +102,14 @@ final class BTWritePacketsSubscription<SubscriberType: Subscriber>: Subscription
                 } while !self.packetQueue.isEmpty
             }
         
+        // looking for new packet to sent or queue peripheral is not ready
         packetPublisherCancellable = packetPublisherBuffer
             .sink { [weak self] complet in
                 self?.subscriber?.receive(completion: complet)
             } receiveValue: { [weak self]  packet in
                 guard let self = self else { return }
                 if  self.packetQueue.isEmpty {
+                    // send directly if there is nother waiting in the queue
                     if self.send(packet : packet) {
                         // if sent don't queue it
                         return
@@ -107,6 +118,7 @@ final class BTWritePacketsSubscription<SubscriberType: Subscriber>: Subscription
                 self.packetQueue.append(packet)
                 
             }
+        
     }
     
     private func send(packet : (type : CBCharacteristicWriteType,data :Data)) -> Bool {
@@ -133,7 +145,6 @@ final class BTWritePacketsSubscription<SubscriberType: Subscriber>: Subscription
             
             isReadyToSend = false
             peripheral.writeValue(packet.data, for: characteristic, type: CBCharacteristicWriteType.withResponse)
-            //let _ = subscriber?.receive(packet.data)
             // dont dequeue packet until we have been notified that the packet has been sent or not
             return false
             

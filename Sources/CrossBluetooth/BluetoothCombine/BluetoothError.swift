@@ -42,6 +42,8 @@ public enum BluetoothError: Error {
     case publishingL2CAPChannelFailed(CBL2CAPPSM, Error?)
     // Unknown
     case unknownWriteType
+    // misused api
+    case misUsedAPI(String)
 }
 
 extension BluetoothError: CustomStringConvertible {
@@ -133,6 +135,8 @@ extension BluetoothError: CustomStringConvertible {
             return "Unknown write type"
         case .peripheralMTUMissMatch(let value ):
             return "mtu mismatched please check it up packet size expected \(value.0) received \(value.1)"
+        case .misUsedAPI(let message):
+            return "misused API clue -> \(message)"
         }
     }
 }
