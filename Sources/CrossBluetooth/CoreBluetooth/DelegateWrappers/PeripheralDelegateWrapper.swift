@@ -177,7 +177,12 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      */
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         guard let didWriteSubscriber = didWriteSubscribers[characteristic] else { return }
-        guard error == nil else {
+        if let error = error  {
+            let err = error as NSError
+            if err.domain == CBATTErrorDomain && err.code == 15{
+                let _ = didWriteSubscriber.receive(completion: .failure(BluetoothError.characteristicEncryptionInsufficient(characteristic, error)))
+                return
+            }
             let _ = didWriteSubscriber.receive(completion: .failure(BluetoothError.characteristicWriteFailed(characteristic, error)))
             return
         }
@@ -197,7 +202,12 @@ final class PeripheralDelegateWrapper: NSObject, CBPeripheralDelegate {
      */
     func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic, error: Error?) {
         guard let notifySubscriber = notifySubscribers[characteristic] else { return }
-        guard error == nil else {
+        if let error = error  {
+            let err = error as NSError
+            if err.domain == CBATTErrorDomain && err.code == 15{
+                let _ = notifySubscriber.receive(completion: .failure(BluetoothError.characteristicEncryptionInsufficient(characteristic, error)))
+                return
+            }
             let _ = notifySubscriber.receive(completion: .failure(BluetoothError.characteristicSetNotifyValueFailed(characteristic, error)))
             return
         }

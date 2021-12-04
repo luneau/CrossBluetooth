@@ -33,6 +33,7 @@ public enum BluetoothError: Error {
     case characteristicNotifyChangeFailed(CBCharacteristic, Error?)
     case characteristicSetNotifyValueFailed(CBCharacteristic, Error?)
     case characteristicUpdateValueFailed(CBCharacteristic, Error?)
+    case characteristicEncryptionInsufficient(CBCharacteristic, Error?)
     // Descriptors
     case descriptorsDiscoveryFailed(CBCharacteristic, Error?)
     case descriptorWriteFailed(CBDescriptor, Error?)
@@ -133,10 +134,12 @@ extension BluetoothError: CustomStringConvertible {
         // Unknown
         case .unknownWriteType:
             return "Unknown write type"
-        case .peripheralMTUMissMatch(let value ):
+        case let .peripheralMTUMissMatch( value ):
             return "mtu mismatched please check it up packet size expected \(value.0) received \(value.1)"
-        case .misUsedAPI(let message):
+        case let .misUsedAPI( message):
             return "misused API clue -> \(message)"
+        case let .characteristicEncryptionInsufficient(_, err):
+            return err?.localizedDescription ?? ""
         }
     }
 }
