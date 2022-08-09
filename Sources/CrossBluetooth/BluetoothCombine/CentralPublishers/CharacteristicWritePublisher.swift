@@ -73,7 +73,8 @@ final class BTWritePacketsSubscription<SubscriberType: Subscriber>: Subscription
         
         // observe write without response status
         isReadyToWriteCancellable = peripheral.readyToWriteWithoutResponsePublisher(forAttribute: characteristic)
-            .sink(receiveCompletion: {_ in}, receiveValue: { [weak self] _ in
+            .sink(receiveCompletion: {[weak self ]completion in
+                self?.subscriber?.receive(completion: completion)}, receiveValue: { [weak self] _ in
                 self?.isReadyToSend = true
             })
         
